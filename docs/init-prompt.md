@@ -1,0 +1,6 @@
+I want to create a software engineering project called "XpenseTracker" with python, that tracks my monthly / yearly expenses. The app should have the abilility to scan receipts in seconds and track the expenses i have made in a self-hosting manner. An AI (google gemini api) analyzes the picture and immediately adds it to my expenses. I want to be able to choose between to 2 modes: Manual and Uploading Receipts. If i choose manual mode, i should be able to add expenses myself with Date, Description, Category and Amount (all in Euro at the moment) and they should be saved so they can be tracked by a category pie chart / monthly overview dashboard. I want to overview my expenses on the dashboard. The UI is very simple and self-explanatory but can be further improved, i appended some UI ideas as pictures.
+
+As TechStack i want to use Python, PostgreSQL Database, UI should be created using a appropriate Python framework where i can create the UI easily and connect it to the backend. I want to be able to self-host everything easily, so Docker with docker-compose.yaml.
+Startup & Deployment should be easy.
+
+Now create a init-plan.md for this project, with all core project information i can use for implementation. Also create a ui.md that describes the UI pages, so i can use it to implement the UI.
