@@ -1,0 +1,12 @@
+streamlit
+sqlalchemy
+psycopg2-binary
+pydantic
+pydantic-settings
+google-generativeai
+openai
+python-dotenv
+pillow
+pandas
+plotly
+pytest
