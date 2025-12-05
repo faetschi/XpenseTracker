@@ -1,5 +1,3 @@
-
-
 # XpenseTracker - Project Initiation Plan
 
 ## 1. Project Overview
@@ -11,21 +9,31 @@
 * **Database:** PostgreSQL (Robust, relational storage).
 * **AI Engine:** Google Gemini API (`google-generativeai` library) for OCR and entity extraction.
 * **Containerization:** Docker & Docker Compose.
-* **ORM:** SQLAlchemy (Recommended for cleaner code and object mapping).
-* **Data Validation:** Pydantic (Crucial for validating AI JSON outputs and form data).
-* **Testing:** Pytest (For unit and integration testing).
+* **ORM:** SQLAlchemy (Clean code & object mapping).
+* **Data Validation:** Pydantic (Validating AI JSON outputs & form data).
+* **Testing:** Pytest (Unit and integration testing).
 * **Utilities:** `Pillow` (Image processing), `python-dotenv` (Configuration), `pandas` (Data manipulation for charts).
 
 ## 3. System Architecture
 
-The system follows a **Service Layer Pattern** to decouple the UI from the database logic, ensuring scalability and testability.
+The system follows **Clean Architecture** principles to ensure the UI and AI components are replaceable.
+
+**1. Service Layer Pattern (UI Decoupling):**
+*   The **UI** (Streamlit) acts purely as a presentation layer. It captures input and displays output.
+*   The **Service Layer** contains all business logic. It accepts Pydantic models and returns Pydantic models.
+*   **Rule:** `app/services/` must NEVER import `streamlit`. This ensures we can swap Streamlit for FastAPI/Django later without touching the logic.
+
+**2. Strategy Pattern (AI Decoupling):**
+*   We define an abstract interface `ReceiptScanner` (in `app/interfaces/`).
+*   The `GeminiScanner` implements this interface.
+*   The application depends on the *interface*, not the concrete class. This allows us to easily add an `OllamaScanner` or `OpenAIScanner` in the future by simply changing a config setting.
 
 **Containers:**
 1.  **`xpense-app`**: Runs the Python Streamlit application.
 2.  **`xpense-db`**: Runs the PostgreSQL database.
 
 **Logical Flow:**
-`Streamlit UI (Pages)` -> `Service Layer (Business Logic)` -> `Repository/ORM (Data Access)` -> `PostgreSQL`
+`UI` -> `Service Layer` -> `AI Interface (Strategy)` -> `Gemini/Ollama Implementation`
 
 ## 4. Database Schema (PostgreSQL)
 We need a robust schema to handle currencies and categorization. *Note: We will use SQLAlchemy's `Base.metadata.create_all()` for simple table creation on startup. Schema updates will be handled manually or via SQL scripts to keep deployment simple.*
@@ -79,10 +87,18 @@ XpenseTracker/
 │   │   ├── __init__.py
 │   │   └── expense.py           # Schemas for AI output & UI forms
 │   │
+│   ├── interfaces/              # Abstract Base Classes (Contracts)
+│   │   ├── __init__.py
+│   │   └── scanner.py           # Defines the 'ReceiptScanner' interface
+│   │
 │   ├── services/                # Business Logic (Service Layer)
 │   │   ├── __init__.py
 │   │   ├── expense_service.py   # CRUD logic, stats calculations
-│   │   └── ai_service.py        # Gemini interaction & JSON parsing
+│   │   └── llm_factory.py       # Returns the correct AI scanner based on config
+│   │
+│   ├── adapters/                # External System Implementations
+│   │   ├── __init__.py
+│   │   └── gemini_scanner.py    # Implements 'ReceiptScanner' using Google Gemini
 │   │
 │   └── utils/                   # Shared Utilities
 │       ├── __init__.py
@@ -104,9 +120,10 @@ XpenseTracker/
 ## 7. Implementation Roadmap
 1.  **Environment Setup:** Create `docker-compose.yaml` and `Dockerfile`. Set up `core/config.py` and `core/database.py`.
 2.  **Data Layer:** Define SQLAlchemy models in `models/` and Pydantic schemas in `schemas/`.
-3.  **Service Layer:** Implement `services/expense_service.py` (CRUD) and `services/ai_service.py` (Gemini logic).
-4.  **UI Skeleton:** Create `main.py` and `pages/` structure.
-5.  **Feature - Manual Mode:** Connect `pages/1_Add_Expense.py` to `expense_service.create_expense`.
-6.  **Feature - AI Mode:** Connect `pages/1_Add_Expense.py` to `ai_service.scan_receipt`.
-7.  **Feature - Dashboard:** Implement charts in `main.py` using data from `expense_service.get_stats`.
-8.  **Polishing:** Apply "Budget Lens" styling and run tests.
+3.  **AI Core:** Define the `ReceiptScanner` interface in `interfaces/`. Implement `GeminiScanner` in `adapters/`.
+4.  **Service Layer:** Implement `services/expense_service.py` (CRUD) and `services/llm_factory.py`.
+5.  **UI Skeleton:** Create `main.py` and `pages/` structure.
+6.  **Feature - Manual Mode:** Connect `pages/1_Add_Expense.py` to `expense_service.create_expense`.
+7.  **Feature - AI Mode:** Connect `pages/1_Add_Expense.py` to `llm_factory.get_scanner().scan_receipt()`.
+8.  **Feature - Dashboard:** Implement charts in `main.py` using data from `expense_service.get_stats`.
+9.  **Polishing:** Apply "Budget Lens" styling and run tests.
