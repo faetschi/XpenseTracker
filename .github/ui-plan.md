@@ -7,7 +7,7 @@ The UI mimics the provided "Budget Lens" screenshots. It prioritizes clarity, wh
 * **Font:** Sans-serif (Streamlit default or Roboto).
 
 ## 2. Navigation Structure
-We will use **NiceGUI's Routing** system (`@ui.page`).
+We will use **NiceGui's Routing** system (`@ui.page`).
 
 *   **Dashboard (`/`)**: Overview of finances (Charts & Summaries).
 *   **Add Expense (`/add`)**: The entry point for new expenses (Manual & AI).
@@ -67,7 +67,7 @@ This page replaces the "Edit Expense" modal and provides a full view of all data
 *   **Delete Action:** A column with a delete button.
 
 ## 4. UI Components & Styling Code Snippets
-To achieve the specific "Budget Lens" look, we will use **Tailwind CSS** classes directly in NiceGUI.
+To achieve the specific "Budget Lens" look, we will use **Tailwind CSS** classes directly in NiceGui.
 
 **Button Style:**
 ```python

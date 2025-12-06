@@ -5,7 +5,7 @@
 
 ## 2. Technology Stack
 * **Language:** Python 3.11+.
-* **Frontend/UI Framework:** NiceGUI (Vue.js/FastAPI based) - Chosen for full UI customization and modern look.
+* **Frontend/UI Framework:** NiceGui (Vue.js/FastAPI based) - Chosen for full UI customization and modern look.
 * **Database:** PostgreSQL (Robust, relational storage).
 * **AI Engine:** Google Gemini API (`google-generativeai` library) for OCR and entity extraction.
 * **Containerization:** Docker & Docker Compose.
@@ -19,7 +19,7 @@
 The system follows **Clean Architecture** principles to ensure the UI and AI components are replaceable.
 
 **1. Service Layer Pattern (UI Decoupling):**
-*   The **UI** (NiceGUI) acts purely as a presentation layer. It captures input and displays output.
+*   The **UI** (NiceGui) acts purely as a presentation layer. It captures input and displays output.
 *   The **Service Layer** contains all business logic. It accepts Pydantic models and returns Pydantic models.
 *   **Rule:** `app/services/` must NEVER import `nicegui`. This ensures we can swap the UI framework later without touching the logic.
 
@@ -29,7 +29,7 @@ The system follows **Clean Architecture** principles to ensure the UI and AI com
 *   The application depends on the *interface*, not the concrete class. This allows us to easily add an `OllamaScanner` or `OpenAIScanner` in the future by simply changing a config setting.
 
 **Containers:**
-1.  **`xpense-app`**: Runs the Python NiceGUI application.
+1.  **`xpense-app`**: Runs the Python NiceGui application.
 2.  **`xpense-db`**: Runs the PostgreSQL database.
 
 **Logical Flow:**
