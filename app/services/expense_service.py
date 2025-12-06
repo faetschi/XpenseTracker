@@ -29,6 +29,23 @@ class ExpenseService:
         return db_expense
 
     @staticmethod
+    def update_expense(db: Session, expense_id: int, updates: Dict[str, Any]) -> Any:
+        expense = db.query(Expense).filter(Expense.id == expense_id).first()
+        if expense:
+            for key, value in updates.items():
+                if hasattr(expense, key):
+                    setattr(expense, key, value)
+            
+            # Recalculate amount_eur if amount changed
+            if 'amount' in updates:
+                expense.amount_eur = expense.amount
+                
+            db.commit()
+            db.refresh(expense)
+            return expense
+        return None
+
+    @staticmethod
     def delete_expense(db: Session, expense_id: int) -> bool:
         expense = db.query(Expense).filter(Expense.id == expense_id).first()
         if expense:
