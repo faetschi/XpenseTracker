@@ -88,9 +88,8 @@ def history_page():
                 try:
                     if ExpenseService.delete_expense(db, row_id):
                         ui.notify(f'Deleted expense', type='positive')
-                        # Update grid rows
-                        rows[:] = [r for r in rows if r['id'] != row_id]
-                        grid.update()
+                        # Reload the page to refresh data
+                        ui.navigate.to('/history')
                     else:
                         ui.notify('Failed to delete', type='negative')
                 finally:
