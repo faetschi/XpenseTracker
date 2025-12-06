@@ -9,19 +9,19 @@ from app.ui.layout import theme
 import os
 
 def add_expense_page():
-    theme()
+    theme('add_expense')
     
-    with ui.column().classes('w-full p-4 max-w-4xl mx-auto gap-6'):
+    with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         ui.label('➕ Add New Expense').classes('text-2xl font-bold text-gray-800')
         
-        with ui.tabs().classes('w-full text-blue-600') as tabs:
+        with ui.tabs().classes('w-full text-blue-600').props('align="left"') as tabs:
             ai_tab = ui.tab('AI Upload')
             manual_tab = ui.tab('Manual Entry')
             
         with ui.tab_panels(tabs, value=ai_tab).classes('w-full bg-transparent'):
             
             # --- AI TAB ---
-            with ui.tab_panel(ai_tab):
+            with ui.tab_panel(ai_tab).classes('p-0'):
                 with ui.card().classes('w-full p-6 shadow-sm'):
                     ui.label('Upload Receipt').classes('text-lg font-bold mb-4 text-gray-700')
                     
@@ -91,7 +91,7 @@ def add_expense_page():
                     ui.upload(on_upload=handle_upload, label="Drop receipt image here", auto_upload=True).classes('w-full mb-6')
 
             # --- MANUAL TAB ---
-            with ui.tab_panel(manual_tab):
+            with ui.tab_panel(manual_tab).classes('p-0'):
                 with ui.card().classes('w-full p-6 shadow-sm'):
                     ui.label('Manual Entry').classes('text-lg font-bold mb-4 text-gray-700')
                     

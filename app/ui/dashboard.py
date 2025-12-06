@@ -9,7 +9,7 @@ from app.core.config import settings
 from app.ui.layout import theme
 
 def dashboard_page():
-    theme()
+    theme('dashboard')
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         # Header
@@ -118,9 +118,9 @@ def dashboard_page():
                         ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
                 # Chart & Recent Transactions
-                with ui.row().classes('w-full gap-6'):
+                with ui.row().classes('w-full gap-4'):
                     # Chart
-                    with ui.card().classes('w-full md:w-1/2 p-6 shadow-sm'):
+                    with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
                         if stats["by_category"]:
                             df = pd.DataFrame(list(stats["by_category"].items()), columns=["Category", "Amount"])
@@ -132,7 +132,7 @@ def dashboard_page():
                             ui.label('No data available for this period.').classes('text-gray-400 italic')
 
                     # Recent Transactions
-                    with ui.card().classes('w-full md:w-1/2 p-6 shadow-sm'):
+                    with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
                         ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
                         if expenses:
                             columns = [

@@ -1,28 +1,35 @@
 from nicegui import ui
 
-def nav_button(label: str, link: str, icon: str):
-    """Helper to create consistent navigation buttons."""
-    ui.button(label, icon=icon, on_click=lambda: ui.navigate.to(link)) \
-        .props('flat align=left') \
-        .classes('w-full text-gray-700 hover:bg-blue-50 hover:text-blue-600 rounded-r-full')
+def nav_link(label: str, link: str, icon: str, active: bool = False):
+    """Helper to create consistent navigation links in the header."""
+    base_classes = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 no-underline'
+    active_classes = 'text-blue-600 bg-blue-50 font-semibold'
+    inactive_classes = 'text-gray-600 hover:bg-gray-100 hover:text-gray-900'
+    
+    classes = f"{base_classes} {active_classes if active else inactive_classes}"
+    
+    with ui.link(target=link).classes(classes):
+        ui.icon(icon)
+        ui.label(label)
 
-def theme():
-    """Applies the common layout (Header, Sidebar) to the page."""
+def theme(current_page: str = None):
+    """Applies the common layout (Header) to the page."""
+    
+    ui.add_css('.q-page-container { padding-top: 32px !important; }')
     
     # Header
-    with ui.header().classes('bg-blue-600 text-white shadow-md items-center h-14'):
-        ui.button(on_click=lambda: left_drawer.toggle(), icon='menu').props('flat color=white round')
-        ui.label('XpenseTracker').classes('text-xl font-bold ml-2')
+    with ui.header().classes('bg-white border-b border-gray-200 text-gray-800 shadow-sm h-16 px-6 flex items-center justify-between sticky top-0 z-50'):
+        # Logo / Title
+        ### === INFO: NiceGui uses https://fonts.google.com/icons ===
+        with ui.row().classes('items-center gap-2 cursor-pointer').on('click', lambda: ui.navigate.to('/')):
+            ui.icon('credit_score', size='md', color='blue-600')
+            ui.label('XpenseTracker').classes('text-xl font-bold text-gray-800 tracking-tight')
 
-    # Sidebar (Drawer)
-    with ui.left_drawer(value=True).classes('bg-gray-50 border-r border-gray-200') as left_drawer:
-        ui.label('MENU').classes('text-gray-400 text-xs font-bold px-4 py-2 mt-2')
-        with ui.column().classes('w-full gap-1'):
-            nav_button('Dashboard', '/', 'dashboard')
-            nav_button('Add Expense', '/add', 'add_circle')
-            nav_button('History', '/history', 'history')
+        # Navigation
+        with ui.row().classes('items-center gap-2'):
+            nav_link('Dashboard', '/', 'dashboard', active=(current_page == 'dashboard'))
+            nav_link('Add Expense', '/add', 'add_circle', active=(current_page == 'add_expense'))
+            nav_link('History', '/history', 'history', active=(current_page == 'history'))
     
-    # Main Content Container
-    # We don't need to explicitly create a container here as the page content follows automatically,
-    # but we can add some global styling to the page body if needed.
-    # ui.query('body').classes('bg-gray-50')
+    # Page background
+    ui.query('body').classes('bg-gray-50')
