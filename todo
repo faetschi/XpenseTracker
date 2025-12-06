@@ -1,0 +1,4 @@
+- Upload 10-15 Test-Receipts and Test with OpenAI / Gemini if it adds expenses correctly (adjust ai scanning methods if necessary)
+- Add automatic tests for the ai expense receipt scanning (to test functionality on changes and for different future AI scanner providers)
+
+- make all properties configured in core/config.py configurable via UI by the user
