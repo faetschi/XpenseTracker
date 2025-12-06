@@ -14,6 +14,7 @@ class ExpenseService:
 
         db_expense = Expense(
             date=expense.date,
+            type=expense.type,
             category=expense.category,
             description=expense.description,
             amount=expense.amount,
@@ -67,13 +68,16 @@ class ExpenseService:
         if month:
             query = query.filter(func.extract('month', Expense.date) == month)
             
-        total_spent = query.with_entities(func.sum(Expense.amount_eur)).scalar() or 0
+        total_spent = query.filter(Expense.type == 'expense').with_entities(func.sum(Expense.amount_eur)).scalar() or 0
+        total_income = query.filter(Expense.type == 'income').with_entities(func.sum(Expense.amount_eur)).scalar() or 0
         
-        category_stats = query.with_entities(
+        category_stats = query.filter(Expense.type == 'expense').with_entities(
             Expense.category, func.sum(Expense.amount_eur)
         ).group_by(Expense.category).all()
         
         return {
             "total_spent": total_spent,
+            "total_income": total_income,
+            "balance": total_income - total_spent,
             "by_category": {cat: float(amt) for cat, amt in category_stats}
         }

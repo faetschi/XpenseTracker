@@ -84,11 +84,24 @@ def dashboard_page():
             with content:
                 # Metrics Row
                 with ui.row().classes('w-full gap-4'):
-                    # Total Spent Card
-                    label_text = f"Total Spent ({'All Year' if not selected_month else date(2000, selected_month, 1).strftime('%B')})"
-                    with ui.card().classes('flex-1 p-4 border-l-4 border-blue-500 shadow-sm'):
-                        ui.label(label_text).classes('text-gray-500 text-sm uppercase tracking-wide')
+                    period_label = 'All Year' if not selected_month else date(2000, selected_month, 1).strftime('%B')
+                    
+                    # Income Card
+                    with ui.card().classes('flex-1 p-4 border-l-4 border-green-500 shadow-sm'):
+                        ui.label(f"Income ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
+                        ui.label(format_currency(stats["total_income"])).classes('text-3xl font-bold text-gray-800')
+
+                    # Expenses Card
+                    with ui.card().classes('flex-1 p-4 border-l-4 border-red-500 shadow-sm'):
+                        ui.label(f"Expenses ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(stats["total_spent"])).classes('text-3xl font-bold text-gray-800')
+
+                    # Leftover-Balance Card
+                    balance = stats["balance"]
+                    color = 'green' if balance >= 0 else 'red'
+                    with ui.card().classes(f'flex-1 p-4 border-l-4 border-{color}-500 shadow-sm'):
+                        ui.label(f"Leftover ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
+                        ui.label(format_currency(balance)).classes(f'text-3xl font-bold text-{color}-600')
                     
                     # Top Category Card
                     with ui.card().classes('flex-1 p-4 border-l-4 border-pink-500 shadow-sm'):
@@ -128,10 +141,16 @@ def dashboard_page():
                                 {
                                     'date': e.date.strftime('%d.%m.%Y'),
                                     'category': e.category,
-                                    'amount': format_currency(e.amount_eur)
+                                    'amount': format_currency(e.amount_eur),
+                                    'type': getattr(e, 'type', 'expense') # Fallback if not loaded yet
                                 } for e in expenses
                             ]
-                            ui.table(columns=columns, rows=rows, pagination=None).classes('w-full')
+                            table = ui.table(columns=columns, rows=rows, pagination=None).classes('w-full')
+                            table.add_slot('body-cell-amount', '''
+                                <q-td :props="props" :class="props.row.type === 'income' ? 'text-green-600 font-bold' : 'text-red-600'">
+                                    {{ props.row.type === 'income' ? '+' : '-' }} {{ props.value }}
+                                </q-td>
+                            ''')
                         else:
                             ui.label('No transactions yet.').classes('text-gray-400 italic')
 

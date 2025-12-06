@@ -18,6 +18,7 @@ class Settings(BaseSettings):
         "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten",
         "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Sonstiges"
     ]
+    INCOME_CATEGORIES: list[str] = ["Gehalt", "Geschenk", "Sonstiges"]
     CURRENCIES: list[str] = ["EUR", "UNKNOWN"]
     
     # Dashboard Settings

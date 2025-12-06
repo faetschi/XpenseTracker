@@ -9,6 +9,7 @@ class Expense(Base):
     date = Column(Date, nullable=False)
     category = Column(String(50), nullable=False)
     description = Column(Text, nullable=True)
+    type = Column(String(20), default="expense", nullable=False)
     amount = Column(Numeric(10, 2), nullable=False)
     currency = Column(String(3), default="EUR")
     amount_eur = Column(Numeric(10, 2), nullable=False)

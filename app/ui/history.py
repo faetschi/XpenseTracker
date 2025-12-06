@@ -28,11 +28,13 @@ def history_page():
             {
                 'id': e.id,
                 'date': e.date.strftime('%d.%m.%Y'),
+                'type': e.type,
                 'category': e.category,
                 'description': e.description,
                 'amount': float(e.amount),
                 'currency': e.currency,
-                'amount_eur': float(e.amount_eur)
+                'amount_eur': float(e.amount_eur),
+                'actions': '<span style="cursor: pointer; font-size: 1.2em;">❌</span>'
             } for e in expenses
         ]
         
@@ -97,35 +99,28 @@ def history_page():
         grid = ui.aggrid({
             'columnDefs': [
                 {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True},
+                {'headerName': 'Type', 'field': 'type', 'sortable': True, 'filter': True, 'editable': True,
+                 'cellEditor': 'agSelectCellEditor',
+                 'cellEditorParams': {'values': ['expense', 'income']}},
                 {'headerName': 'Category', 'field': 'category', 'sortable': True, 'filter': True, 'editable': True, 
                  'cellEditor': 'agSelectCellEditor', 
-                 'cellEditorParams': {'values': settings.EXPENSE_CATEGORIES}},
+                 'cellEditorParams': {'values': settings.EXPENSE_CATEGORIES + settings.INCOME_CATEGORIES}},
                 {'headerName': 'Description', 'field': 'description', 'sortable': True, 'filter': True, 'editable': True},
-                {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True},
+                {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True,
+                 'cellClassRules': {
+                     'text-green-600 font-bold': 'data.type == "income"',
+                     'text-red-600': 'data.type == "expense"'
+                 }},
                 {'headerName': 'Currency', 'field': 'currency', 'sortable': True, 'filter': True, 'editable': True,
                  'cellEditor': 'agSelectCellEditor',
                  'cellEditorParams': {'values': settings.CURRENCIES}},
-                {'headerName': 'Actions', 'field': 'actions', 'cellRenderer': 'deleteRenderer', 'width': 100, 'editable': False}
+                {'headerName': 'Actions', 'field': 'actions', 'width': 100, 'editable': False}
             ],
             'rowData': rows,
             'pagination': True,
             'paginationPageSize': 100,
             'domLayout': 'autoHeight',
-            'components': {
-                'deleteRenderer': """
-                    class DeleteRenderer {
-                        init(params) {
-                            this.eGui = document.createElement('div');
-                            this.eGui.innerHTML = '🗑️';
-                            this.eGui.style.cursor = 'pointer';
-                            this.eGui.style.textAlign = 'center';
-                            this.eGui.style.fontSize = '1.2em';
-                        }
-                        getGui() { return this.eGui; }
-                    }
-                """
-            }
-        }).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
+        }, html_columns=[6]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
         
         async def handle_cell_clicked(e):
             if e.args['colId'] == 'actions':

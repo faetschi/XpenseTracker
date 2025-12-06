@@ -5,6 +5,7 @@ from decimal import Decimal
 
 class ExpenseBase(BaseModel):
     date: date
+    type: str = "expense"
     category: str
     description: Optional[str] = None
     amount: Decimal

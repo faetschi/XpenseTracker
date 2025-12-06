@@ -95,6 +95,9 @@ def add_expense_page():
                 with ui.card().classes('w-full p-6 shadow-sm'):
                     ui.label('Manual Entry').classes('text-lg font-bold mb-4 text-gray-700')
                     
+                    # Type Toggle
+                    type_toggle = ui.toggle(['Expense', 'Income'], value='Expense').props('spread').classes('w-full mb-4')
+                    
                     with ui.grid(columns=2).classes('w-full gap-4'):
                         # Date Picker
                         with ui.input('Date', value=date.today().strftime('%Y-%m-%d')) as date_field:
@@ -108,6 +111,16 @@ def add_expense_page():
                             label="Category", value="Lebensmittel"
                         ).classes('w-full')
                         
+                        def update_categories():
+                            if type_toggle.value == 'Expense':
+                                category_select.options = settings.EXPENSE_CATEGORIES
+                                category_select.value = settings.EXPENSE_CATEGORIES[0]
+                            else:
+                                category_select.options = settings.INCOME_CATEGORIES
+                                category_select.value = settings.INCOME_CATEGORIES[0]
+                        
+                        type_toggle.on_value_change(update_categories)
+                        
                         desc_input = ui.input(label="Description").classes('col-span-2 w-full')
                         
                         amount_input = ui.number(label="Amount", value=0.0, format="%.2f").classes('w-full')
@@ -117,6 +130,7 @@ def add_expense_page():
                         try:
                             expense_data = ExpenseCreate(
                                 date=date.fromisoformat(date_field.value),
+                                type=type_toggle.value.lower(),
                                 category=category_select.value,
                                 description=desc_input.value,
                                 amount=amount_input.value,
@@ -124,11 +138,11 @@ def add_expense_page():
                             )
                             db = next(get_db())
                             ExpenseService.create_expense(db, expense_data)
-                            ui.notify('Expense saved successfully!', type='positive')
+                            ui.notify('Transaction saved successfully!', type='positive')
                             # Reset
                             desc_input.value = ""
                             amount_input.value = 0.0
                         except Exception as e:
                             ui.notify(f'Error: {str(e)}', type='negative')
 
-                    ui.button('Save Expense', on_click=save_manual).classes('mt-6 bg-blue-600 text-white w-full')
+                    ui.button('Save Transaction', on_click=save_manual).classes('mt-6 bg-blue-600 text-white w-full')
