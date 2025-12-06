@@ -1,6 +1,7 @@
 from app.interfaces.scanner import ReceiptScanner
 from app.adapters.gemini_scanner import GeminiScanner
 from app.adapters.openai_scanner import OpenAIScanner
+from app.adapters.testing_scanner import TestingScanner
 from app.core.config import settings
 
 class LLMFactory:
@@ -12,6 +13,8 @@ class LLMFactory:
             return OpenAIScanner()
         elif provider == "gemini":
             return GeminiScanner()
+        elif provider == "testing":
+            return TestingScanner()
         else:
             # Default fallback
             return GeminiScanner()

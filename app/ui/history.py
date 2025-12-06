@@ -56,7 +56,7 @@ def history_page():
                     updates['date'] = dt
                 except ValueError:
                     try:
-                        dt = datetime.strptime(new_value, '%Y-%m-%d').date()
+                        dt = datetime.strptime(new_value, '%d.%m.%Y').date()
                         updates['date'] = dt
                     except ValueError:
                         ui.notify('Invalid date format. Use DD.MM.YYYY', type='negative')

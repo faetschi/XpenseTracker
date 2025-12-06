@@ -6,6 +6,8 @@ from app.core.config import settings
 from app.core.prompts import RECEIPT_ANALYSIS_PROMPT
 from app.utils.ai_parsing import parse_ai_response
 
+import mimetypes
+
 class OpenAIScanner(ReceiptScanner):
     def __init__(self):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
@@ -17,6 +19,11 @@ class OpenAIScanner(ReceiptScanner):
 
     def scan_receipt(self, image_path: str) -> ExpenseCreate:
         base64_image = self._encode_image(image_path)
+        
+        # Determine MIME type
+        mime_type, _ = mimetypes.guess_type(image_path)
+        if not mime_type:
+            mime_type = "image/jpeg"
 
         response = self.client.chat.completions.create(
             model=self.model,
@@ -28,7 +35,7 @@ class OpenAIScanner(ReceiptScanner):
                         {
                             "type": "image_url",
                             "image_url": {
-                                "url": f"data:image/jpeg;base64,{base64_image}"
+                                "url": f"data:{mime_type};base64,{base64_image}"
                             },
                         },
                     ],

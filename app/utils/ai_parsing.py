@@ -27,7 +27,7 @@ def parse_ai_response(raw_response: str, image_path: str) -> ExpenseCreate:
         amount_eur = amount
 
         return ExpenseCreate(
-            date=datetime.strptime(data['date'], '%Y-%m-%d').date(),
+            date=datetime.strptime(data['date'], '%d.%m.%Y').date(),
             category=data['category'],
             description=data['description'],
             amount=amount,

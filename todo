@@ -2,3 +2,14 @@
 - Add automatic tests for the ai expense receipt scanning (to test functionality on changes and for different future AI scanner providers)
 
 - make all properties configured in core/config.py configurable via UI by the user
+
+
+## add_expense
+
+- in the ui, the big plus "+" button that enables me the upload images should be centered and bigger / better visible for the user
+
+- it should be possible to click the image preview in add_expense to enlarge it and view the full original picture
+```python
+# Image Preview
+preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden')
+```

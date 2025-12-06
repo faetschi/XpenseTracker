@@ -1,11 +1,16 @@
-from nicegui import ui
+from nicegui import ui, app
 from app.core.database import Base, engine
 from app.ui.dashboard import dashboard_page
 from app.ui.add_expense import add_expense_page
 from app.ui.history import history_page
+import os
 
 # Initialize DB tables
 Base.metadata.create_all(bind=engine)
+
+# Serve uploads directory
+os.makedirs('uploads', exist_ok=True)
+app.add_static_files('/uploads', 'uploads')
 
 @ui.page('/')
 def index():

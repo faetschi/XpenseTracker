@@ -4,7 +4,7 @@ categories_str = ", ".join(settings.EXPENSE_CATEGORIES)
 
 RECEIPT_ANALYSIS_PROMPT = f"""
 Analyze this receipt image. Extract the following fields in JSON format: 
-'date' (YYYY-MM-DD), 
+'date' (DD.MM.YYYY),
 'total_amount' (float), 
 'currency' (ISO code), 
     - 'category' (guess based on items: {categories_str}), 

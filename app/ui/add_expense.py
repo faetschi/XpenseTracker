@@ -2,20 +2,16 @@ from nicegui import ui
 from datetime import date, datetime
 from app.core.database import get_db
 from app.services.expense_service import ExpenseService
-from app.services.llm_factory import LLMFactory
+from app.services.receipt_service import ReceiptService
 from app.schemas.expense import ExpenseCreate
 from app.core.config import settings
 from app.ui.layout import theme
-import os
-from PIL import Image
-import pillow_heif
 from app.utils.logger import get_logger
+import io
+import os
 
 # Configure logging
 logger = get_logger(__name__)
-
-# Register HEIF opener
-pillow_heif.register_heif_opener()
 
 def add_expense_page():
     theme('add_expense')
@@ -34,7 +30,10 @@ def add_expense_page():
                 with ui.card().classes('w-full p-6 shadow-sm'):
                     ui.label('Upload Receipt').classes('text-lg font-bold mb-4 text-gray-700')
                     
-                    # Container for the form, initially hidden
+                    # Image Preview
+                    preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden')
+
+                    # Container for manual entry -> initially hidden
                     ai_form_container = ui.column().classes('w-full gap-4 mt-4')
                     ai_form_container.set_visibility(False)
                     
@@ -64,115 +63,84 @@ def add_expense_page():
                                 # Clear form and hide
                                 ai_desc.value = ""
                                 ai_amount.value = None
-                                ai_form_container.set_visibility(False)
+                                ai_form_container.set_visibility(False) ### hides the manual entry form
+                                preview_image.classes(add='hidden')
+                                preview_image.set_source('')
                             except Exception as e:
                                 ui.notify(f'Error saving: {str(e)}', type='negative')
 
                         ui.button('Save to Database', on_click=save_ai).classes('w-full bg-green-600 text-white mt-4')
 
                     async def handle_upload(e):
-                        logger.info(f"Upload triggered.")
-                        logger.info(f"Event attributes: {dir(e)}")
+                        logger.info(f"File Upload triggered.")
                         
-                        ui.notify('Processing receipt...', type='info', spinner=True)
+                        notification = ui.notification('Processing receipt...', type='info', spinner=True, timeout=None)
                         try:
-                            # Ensure uploads dir exists
-                            os.makedirs("uploads", exist_ok=True)
-                            
-                            # Fallback for filename if e.name is missing
-                            filename = getattr(e, 'name', None)
-                            if not filename and hasattr(e, 'file') and hasattr(e.file, 'name'):
-                                filename = e.file.name
-                            
-                            if not filename:
-                                logger.warning("e.name is missing. Generating timestamped filename.")
-                                filename = f"receipt_{int(datetime.now().timestamp())}.jpg"
-                            else:
-                                logger.info(f"Filename: {filename}")
-                            
-                            file_path = os.path.join("uploads", filename)
-                            
-                            # Robust content reading
+                            # Extract content and filename
                             content = getattr(e, 'content', None)
+                            filename = getattr(e, 'name', None)
                             
-                            # Check if content is available via e.file (SmallFileUpload)
-                            if content is None and hasattr(e, 'file'):
-                                logger.info("e.content is None, checking e.file")
-                                # SmallFileUpload.read() is async, but we can access _data directly if available
-                                if hasattr(e.file, '_data'): 
-                                    import io
-                                    logger.info("Found _data in e.file, wrapping in BytesIO")
-                                    content = io.BytesIO(e.file._data)
-                                elif hasattr(e.file, 'read'):
-                                    # If it's an async read method, we need to await it, but we can't await inside f.write
-                                    # So we read it into memory first
-                                    logger.info("Found read() in e.file, attempting to read")
-                                    file_data = await e.file.read()
-                                    import io
-                                    content = io.BytesIO(file_data)
+                            # Handle SmallFileUpload structure
+                            if hasattr(e, 'file'):
+                                if not filename and hasattr(e.file, 'name'):
+                                    filename = e.file.name
+                                
+                                if content is None:
+                                    if hasattr(e.file, '_data'):
+                                        content = io.BytesIO(e.file._data)
+                                    elif hasattr(e.file, 'read'):
+                                        file_data = await e.file.read()
+                                        content = io.BytesIO(file_data)
                             
                             if content is None:
-                                logger.error("e.content is None! Checking for alternative content attributes.")
-                                # Debugging: print all attributes values that are not private
-                                debug_info = {k: getattr(e, k) for k in dir(e) if not k.startswith('_')}
-                                logger.error(f"Event object state: {debug_info}")
-                                
-                                ui.notify("Error: Upload content missing. Please try again.", type='negative')
+                                logger.error("Upload content missing")
+                                if notification:
+                                    notification.message = "Error: Upload content missing."
+                                    notification.spinner = False
+                                    notification.type = 'negative'
+                                    notification.timeout = 5000
                                 return
 
-                            logger.info(f"Writing content to {file_path}")
-                            with open(file_path, "wb") as f:
-                                f.write(content.read())
+                            # Delegate processing to ReceiptService
+                            result, file_path = await ReceiptService.process_receipt(content, filename)
                             
-                            # Handle HEIC conversion if needed
-                            if filename.lower().endswith(('.heic', '.heif')):
-                                logger.info("Detected HEIC/HEIF. Converting to JPG...")
-                                try:
-                                    img = Image.open(file_path)
-                                    new_path = os.path.splitext(file_path)[0] + ".jpg"
-                                    img.save(new_path, "JPEG")
-                                    file_path = new_path # Update path to point to the JPG
-                                    logger.info(f"Converted to {file_path}")
-                                except Exception as heic_err:
-                                    logger.error(f"HEIC conversion failed: {heic_err}", exc_info=True)
-                                    # Continue with original file, maybe LLM supports it
-                            
-                            # Run AI
-                            logger.info("Starting AI scan...")
-                            scanner = LLMFactory.get_scanner()
-                            result = scanner.scan_receipt(file_path)
-                            logger.info(f"AI Scan result: {result}")
-                            
-                            # Update Form
-                            ai_date.value = result.date.strftime('%Y-%m-%d')
-                            ai_amount.value = result.amount
-                            ai_currency.value = result.currency
-                            ai_category.value = result.category
-                            ai_desc.value = result.description
-                            
-                            # Show the form for review
-                            ai_form_container.set_visibility(True)
-                            
-                            ui.notify('Receipt scanned! Review and save.', type='positive')
-                        except Exception as err:
-                            logger.error(f"Error in handle_upload: {err}", exc_info=True)
-                            ui.notify(f'Error scanning receipt: {str(err)}', type='negative')
-                            
-                            # Update Form
-                            ai_date.value = result.date.strftime('%Y-%m-%d')
-                            ai_amount.value = result.amount
-                            ai_currency.value = result.currency
-                            ai_category.value = result.category
-                            ai_desc.value = result.description
-                            
-                            # Show the form for review
-                            ai_form_container.set_visibility(True)
-                            
-                            ui.notify('Receipt scanned! Review and save.', type='positive')
-                        except Exception as err:
-                            ui.notify(f'Error scanning receipt: {str(err)}', type='negative')
+                            # Show Preview
+                            web_path = f"/{file_path.replace(os.sep, '/')}"
+                            preview_image.set_source(web_path)
+                            preview_image.classes(remove='hidden')
 
-                    ui.upload(on_upload=handle_upload, label="Drop receipt image here", auto_upload=True).classes('w-full mb-6')
+                            # Update Form
+                            ai_date.value = result.date.strftime('%Y-%m-%d')
+                            ai_amount.value = float(result.amount)
+                            ai_currency.value = result.currency
+                            ai_category.value = result.category
+                            ai_desc.value = result.description
+                            
+                            # Show the form for review
+                            ai_form_container.set_visibility(True)
+                            
+                            # Update notification to success state
+                            if notification:
+                                notification.message = 'Receipt scanned! Review and save.'
+                                notification.spinner = False
+                                notification.type = 'positive'
+                                notification.timeout = 5000
+                            
+                            # Reset uploader to clear progress bar and file list
+                            uploader.reset()
+                            
+                        except Exception as err:
+                            if notification:
+                                notification.message = f'Error scanning receipt: {str(err)}'
+                                notification.spinner = False
+                                notification.type = 'negative'
+                                notification.timeout = 5000
+                            logger.error(f"Error in handle_upload: {err}", exc_info=True)
+                            uploader.reset()
+
+                    uploader = ui.upload(on_upload=handle_upload, label="Drop receipt image here", auto_upload=True) \
+                        .props('flat bordered color=blue-6 accept=".jpg, .jpeg, .png, .heic" no-thumbnails') \
+                        .classes('w-full mb-6')
 
             # --- MANUAL TAB ---
             with ui.tab_panel(manual_tab).classes('p-0'):
@@ -184,8 +152,8 @@ def add_expense_page():
                     
                     with ui.grid(columns=2).classes('w-full gap-4'):
                         # Date Picker
-                        with ui.input('Date', value=date.today().strftime('%Y-%m-%d')) as date_field:
-                            with date_field.add_slot('append'):
+                        with ui.input('Date', value=date.today().strftime('%d.%m.%Y')) as date_field:
+                            with date_field.add_slot('prepend'):
                                 ui.icon('event').classes('cursor-pointer').on('click', lambda: date_menu.open())
                                 with ui.menu() as date_menu:
                                     ui.date().bind_value(date_field)
