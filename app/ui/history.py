@@ -26,7 +26,7 @@ def history_page():
         rows = [
             {
                 'id': e.id,
-                'date': e.date.strftime('%Y-%m-%d'),
+                'date': e.date.strftime('%d.%m.%Y'),
                 'category': e.category,
                 'description': e.description,
                 'amount': float(e.amount),
@@ -88,12 +88,11 @@ def history_page():
         
         # Hack to pass the python function to the JS context
         grid.options['context']['componentParent'] = ui.context.client
-        # We need to expose the delete_row function to the client
-        # But NiceGUI's AgGrid wrapper doesn't support direct JS-to-Python callbacks easily via 'context' in this version.
-        
+        # delete_row function needs to be exposed to client
+        # -> but NiceGUI's AgGrid wrapper doesn't support direct JS-to-Python callbacks easily via 'context' in this version.
         # ALTERNATIVE APPROACH: Use a separate column of buttons outside AgGrid or use ui.table instead.
-        # Since AgGrid is complex to wire up with custom renderers in Python-only NiceGUI without extra JS files,
-        # let's switch to ui.table which is native and easier for this "Action" button requirement.
+        # Since AgGrid is complex to wire up with custom renderers in Python-only NiceGUI without extra JS files
+        # -> switch to ui.table which is native and easier for this "Action" button requirement.
         
         # Re-implementing with ui.table for better "Action" support
         grid.delete() # Remove the AgGrid we just defined

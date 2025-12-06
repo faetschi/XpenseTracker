@@ -12,37 +12,58 @@ def dashboard_page():
     theme()
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
-        # Header Row with Date Filters
-        with ui.row().classes('w-full justify-between items-center'):
-            ui.label('💰 XpenseTracker Dashboard').classes('text-2xl font-bold text-gray-800')
-            
-            # Date Filter Controls
+        # Header
+        ui.label('💰 XpenseTracker Dashboard').classes('text-2xl font-bold text-gray-800')
+        
+        # Filter Toolbar
+        with ui.row().classes('w-full items-center gap-4 p-3 bg-white rounded-lg shadow-sm border border-gray-200'):
             current_year = date.today().year
             current_month = date.today().month
             
-            with ui.row().classes('gap-2'):
-                year_select = ui.select(
-                    options=[current_year - i for i in range(settings.DASHBOARD_YEARS_LOOKBACK)], 
-                    value=current_year, 
-                    label="Year"
-                ).classes('w-24')
+            year_select = ui.select(
+                options=[current_year - i for i in range(settings.DASHBOARD_YEARS_LOOKBACK)], 
+                value=current_year, 
+                label="Year"
+            ).classes('w-24').props('outlined dense options-dense')
+
+            month_map = {
+                1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
+                7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
+            }
+            
+            with ui.row().classes('items-center gap-1'):
+                def change_month(delta):
+                    if not month_select.value: return
+                    new_val = month_select.value + delta
+                    if 1 <= new_val <= 12:
+                        month_select.value = new_val
+
+                btn_prev = ui.button(icon='chevron_left', on_click=lambda: change_month(-1)).props('flat dense round')
                 
                 month_select = ui.select(
-                    options={i: date(2000, i, 1).strftime('%B') for i in range(1, 13)}, 
+                    options=month_map, 
                     value=current_month, 
                     label="Month"
-                ).classes('w-32')
+                ).props('outlined dense options-dense behavior="menu"').classes('w-32')
                 
-                # "All Year" toggle (clears month)
-                def toggle_month(e):
-                    if e.value:
-                        month_select.disable()
-                        month_select.value = None
-                    else:
-                        month_select.enable()
-                        month_select.value = current_month
-                        
-                all_year_switch = ui.switch('Whole Year', on_change=toggle_month)
+                btn_next = ui.button(icon='chevron_right', on_click=lambda: change_month(1)).props('flat dense round')
+
+            # ui.space() ## spacer to push toggle to right
+            
+            # "All Year" toggle (clears month)
+            def toggle_month(e):
+                if e.value:
+                    month_select.disable()
+                    btn_prev.disable()
+                    btn_next.disable()
+                    month_select.value = None
+                else:
+                    month_select.enable()
+                    btn_prev.enable()
+                    btn_next.enable()
+                    month_select.value = current_month
+                    
+            all_year_switch = ui.switch('Whole Year', on_change=toggle_month)
 
         # Content Container (to be refreshed)
         content = ui.column().classes('w-full gap-6')
@@ -87,7 +108,8 @@ def dashboard_page():
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
                         if stats["by_category"]:
                             df = pd.DataFrame(list(stats["by_category"].items()), columns=["Category", "Amount"])
-                            fig = px.pie(df, values="Amount", names="Category", hole=0.5, color_discrete_sequence=px.colors.qualitative.Pastel)
+                            ### === Pie Chart Colors ===
+                            fig = px.pie(df, values="Amount", names="Category", hole=0.5, color_discrete_sequence=px.colors.qualitative.Vivid) # color_discrete_sequence=["#FF5733", "#33FF57", "#3357FF", "#F333FF"])
                             fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, showlegend=True)
                             ui.plotly(fig).classes('w-full h-80')
                         else:
@@ -104,7 +126,7 @@ def dashboard_page():
                             ]
                             rows = [
                                 {
-                                    'date': e.date.strftime('%Y-%m-%d'),
+                                    'date': e.date.strftime('%d.%m.%Y'),
                                     'category': e.category,
                                     'amount': format_currency(e.amount_eur)
                                 } for e in expenses
