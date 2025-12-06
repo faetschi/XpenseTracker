@@ -1,16 +1,17 @@
 # XpenseTracker 💰
 
-A self-hosted, Python-based expense tracking application with AI receipt scanning.
+A self-hosted, Python-based expense and income tracking application with AI receipt scanning.
 
 ## Features
-- **Dashboard**: Overview of your expenses with charts and metrics.
-- **AI Receipt Scanning**: Upload a receipt and let AI extract the details.
-- **Manual Entry**: Add expenses manually.
-- **History**: View all your transactions.
+- **Modern UI**: Built with the web-based NiceGUI framework.
+- **Financial Dashboard**: Overview of your income, expenses, balance, and savings rate with interactive charts.
+- **AI Receipt Scanning**: Upload a receipt and let AI extract the details automatically.
+- **Income & Expense Tracking**: Log both earnings and spendings.
+- **Transaction History**: View all your transactions with inline editing capabilities.
 
 ## Tech Stack
-- **Frontend**: Streamlit
-- **Backend**: Python, SQLAlchemy
+- **Frontend**: NiceGUI
+- **Backend**: Python, FastAPI, SQLAlchemy
 - **Database**: PostgreSQL
 - **AI**: Google Gemini API / OpenAI API
 
@@ -18,22 +19,7 @@ A self-hosted, Python-based expense tracking application with AI receipt scannin
 
 1.  **Clone the repository**.
 2.  **Configure Environment**:
-    - Create a `.env` file in the root directory.
-    - Copy the following content into it and fill in your API keys:
-
-        ```env
-        # Database Configuration
-        POSTGRES_USER=xpense
-        POSTGRES_PASSWORD=xpense
-        POSTGRES_DB=xpense
-        POSTGRES_HOST=xpense-db
-        POSTGRES_PORT=5432
-
-        # AI Configuration
-        AI_PROVIDER=openai  # Options: 'gemini' or 'openai'
-        GOOGLE_API_KEY=your_gemini_key_here
-        OPENAI_API_KEY=your_openai_key_here
-        ```
+    - Rename `.env.example` to `.env` and and fill the content & API keys.
 
 3.  **Run with Docker**:
     ```bash
@@ -41,8 +27,3 @@ A self-hosted, Python-based expense tracking application with AI receipt scannin
     ```
 4.  **Access the App**:
     - Open your browser and go to `http://localhost:8501`.
-
-## Development
-
-- Install dependencies: `pip install -r requirements.txt`
-- Run locally (requires local Postgres or port forwarding): `streamlit run app/main.py`
