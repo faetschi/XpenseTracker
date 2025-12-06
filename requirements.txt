@@ -9,4 +9,5 @@ pillow
 pandas
 plotly
 pytest
-nicegui
+nicegui>=1.4.0
+pillow-heif
