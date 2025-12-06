@@ -7,7 +7,7 @@ from app.core.config import settings
 from app.ui.layout import theme
 
 def history_page():
-    theme()
+    theme('history')
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         ui.label('📜 Transaction History').classes('text-2xl font-bold text-gray-800')

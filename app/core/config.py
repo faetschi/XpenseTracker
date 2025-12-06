@@ -13,7 +13,6 @@ class Settings(BaseSettings):
     OPENAI_API_KEY: str = ""
 
     # App Constants
-    ## Make sure to change in prompts.py as well
     EXPENSE_CATEGORIES: list[str] = [
         "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten",
         "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Sonstiges"

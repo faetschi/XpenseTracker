@@ -19,7 +19,7 @@ A self-hosted, Python-based expense and income tracking application with AI rece
 
 1.  **Clone the repository**.
 2.  **Configure Environment**:
-    - Rename `.env.example` to `.env` and and fill the content & API keys.
+    - Rename `.env.example` to `.env` and fill the content & API keys.
 
 3.  **Run with Docker**:
     ```bash
