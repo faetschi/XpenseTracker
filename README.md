@@ -37,7 +37,7 @@ A self-hosted, Python-based expense tracking application with AI receipt scannin
 
 3.  **Run with Docker**:
     ```bash
-    docker-compose up --build
+    docker compose up --build
     ```
 4.  **Access the App**:
     - Open your browser and go to `http://localhost:8501`.
