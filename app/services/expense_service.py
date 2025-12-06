@@ -7,6 +7,11 @@ from typing import List, Dict, Any
 class ExpenseService:
     @staticmethod
     def create_expense(db: Session, expense: ExpenseCreate) -> Expense:
+        # Simplified Logic: No currency conversion. 
+        # amount_eur is always equal to amount, and exchange_rate is always 1.0
+        expense.amount_eur = expense.amount
+        expense.exchange_rate = 1.0
+
         db_expense = Expense(
             date=expense.date,
             category=expense.category,
@@ -24,14 +29,30 @@ class ExpenseService:
         return db_expense
 
     @staticmethod
+    def delete_expense(db: Session, expense_id: int) -> bool:
+        expense = db.query(Expense).filter(Expense.id == expense_id).first()
+        if expense:
+            db.delete(expense)
+            db.commit()
+            return True
+        return False
+
+    @staticmethod
     def get_expenses(db: Session, skip: int = 0, limit: int = 100) -> List[Expense]:
         return db.query(Expense).order_by(Expense.date.desc()).offset(skip).limit(limit).all()
 
     @staticmethod
-    def get_stats(db: Session) -> Dict[str, Any]:
-        total_spent = db.query(func.sum(Expense.amount_eur)).scalar() or 0
+    def get_stats(db: Session, year: int = None, month: int = None) -> Dict[str, Any]:
+        query = db.query(Expense)
         
-        category_stats = db.query(
+        if year:
+            query = query.filter(func.extract('year', Expense.date) == year)
+        if month:
+            query = query.filter(func.extract('month', Expense.date) == month)
+            
+        total_spent = query.with_entities(func.sum(Expense.amount_eur)).scalar() or 0
+        
+        category_stats = query.with_entities(
             Expense.category, func.sum(Expense.amount_eur)
         ).group_by(Expense.category).all()
         

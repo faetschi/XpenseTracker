@@ -12,6 +12,17 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
+    # App Constants
+    ## Make sure to change in prompts.py as well
+    EXPENSE_CATEGORIES: list[str] = [
+        "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten",
+        "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Sonstiges"
+    ]
+    CURRENCIES: list[str] = ["EUR", "UNKNOWN"]
+    
+    # Dashboard Settings
+    DASHBOARD_YEARS_LOOKBACK: int = 10 # list of available years
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

@@ -5,7 +5,7 @@
 
 ## 2. Technology Stack
 * **Language:** Python 3.11+.
-* **Frontend/UI Framework:** Streamlit (Chosen for rapid UI development and native data visualization).
+* **Frontend/UI Framework:** NiceGUI (Vue.js/FastAPI based) - Chosen for full UI customization and modern look.
 * **Database:** PostgreSQL (Robust, relational storage).
 * **AI Engine:** Google Gemini API (`google-generativeai` library) for OCR and entity extraction.
 * **Containerization:** Docker & Docker Compose.
@@ -19,9 +19,9 @@
 The system follows **Clean Architecture** principles to ensure the UI and AI components are replaceable.
 
 **1. Service Layer Pattern (UI Decoupling):**
-*   The **UI** (Streamlit) acts purely as a presentation layer. It captures input and displays output.
+*   The **UI** (NiceGUI) acts purely as a presentation layer. It captures input and displays output.
 *   The **Service Layer** contains all business logic. It accepts Pydantic models and returns Pydantic models.
-*   **Rule:** `app/services/` must NEVER import `streamlit`. This ensures we can swap Streamlit for FastAPI/Django later without touching the logic.
+*   **Rule:** `app/services/` must NEVER import `nicegui`. This ensures we can swap the UI framework later without touching the logic.
 
 **2. Strategy Pattern (AI Decoupling):**
 *   We define an abstract interface `ReceiptScanner` (in `app/interfaces/`).
@@ -29,7 +29,7 @@ The system follows **Clean Architecture** principles to ensure the UI and AI com
 *   The application depends on the *interface*, not the concrete class. This allows us to easily add an `OllamaScanner` or `OpenAIScanner` in the future by simply changing a config setting.
 
 **Containers:**
-1.  **`xpense-app`**: Runs the Python Streamlit application.
+1.  **`xpense-app`**: Runs the Python NiceGUI application.
 2.  **`xpense-db`**: Runs the PostgreSQL database.
 
 **Logical Flow:**
@@ -69,10 +69,13 @@ Refactored for scalability and separation of concerns.
 XpenseTracker/
 ├── app/
 │   ├── __init__.py
-│   ├── main.py                  # Streamlit Entry Point (Dashboard/Home)
-│   ├── pages/                   # Streamlit Native Multi-Page Routing
-│   │   ├── 1_Add_Expense.py     # Manual Entry & AI Upload UI
-│   │   └── 2_History.py         # Data Table & Editing UI
+│   ├── main.py                  # NiceGUI Entry Point & Routing
+│   ├── ui/                      # UI Components & Pages
+│   │   ├── __init__.py
+│   │   ├── layout.py            # Common layout (sidebar, header)
+│   │   ├── dashboard.py         # Dashboard Page
+│   │   ├── add_expense.py       # Add Expense Page
+│   │   └── history.py           # History Page
 │   │
 │   ├── core/                    # App Configuration
 │   │   ├── __init__.py
@@ -122,8 +125,8 @@ XpenseTracker/
 2.  **Data Layer:** Define SQLAlchemy models in `models/` and Pydantic schemas in `schemas/`.
 3.  **AI Core:** Define the `ReceiptScanner` interface in `interfaces/`. Implement `GeminiScanner` in `adapters/`.
 4.  **Service Layer:** Implement `services/expense_service.py` (CRUD) and `services/llm_factory.py`.
-5.  **UI Skeleton:** Create `main.py` and `pages/` structure.
-6.  **Feature - Manual Mode:** Connect `pages/1_Add_Expense.py` to `expense_service.create_expense`.
-7.  **Feature - AI Mode:** Connect `pages/1_Add_Expense.py` to `llm_factory.get_scanner().scan_receipt()`.
-8.  **Feature - Dashboard:** Implement charts in `main.py` using data from `expense_service.get_stats`.
-9.  **Polishing:** Apply "Budget Lens" styling and run tests.
+5.  **UI Skeleton:** Create `main.py` and `ui/` structure with NiceGUI routing.
+6.  **Feature - Manual Mode:** Connect `ui/add_expense.py` to `expense_service.create_expense`.
+7.  **Feature - AI Mode:** Connect `ui/add_expense.py` to `llm_factory.get_scanner().scan_receipt()`.
+8.  **Feature - Dashboard:** Implement charts in `ui/dashboard.py` using data from `expense_service.get_stats`.
+9.  **Polishing:** Apply "Budget Lens" styling using Tailwind CSS classes.

@@ -11,7 +11,7 @@ class ExpenseBase(BaseModel):
     currency: str = "EUR"
 
 class ExpenseCreate(ExpenseBase):
-    amount_eur: Decimal
+    amount_eur: Optional[Decimal] = None
     exchange_rate: Decimal = Decimal("1.0")
     receipt_image_path: Optional[str] = None
     is_verified: bool = False
