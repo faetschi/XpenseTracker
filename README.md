@@ -2,6 +2,8 @@
 
 A self-hosted, Python-based expense and income tracking application with AI receipt scanning.
 
+![XpenseTracker Dashboard](docs/dashboard.png)
+
 ## Features
 - **Modern UI**: Built with the web-based NiceGUI framework.
 - **Financial Dashboard**: Overview of your income, expenses, balance, and savings rate with interactive charts.
