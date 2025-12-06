@@ -109,7 +109,7 @@ def history_page():
             ],
             'rowData': rows,
             'pagination': True,
-            'paginationPageSize': 20,
+            'paginationPageSize': 100,
             'domLayout': 'autoHeight',
             'components': {
                 'deleteRenderer': """
