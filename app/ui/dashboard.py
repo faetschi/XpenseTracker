@@ -102,17 +102,20 @@ def dashboard_page():
                     with ui.card().classes(f'flex-1 p-4 border-l-4 border-{color}-500 shadow-sm'):
                         ui.label(f"Leftover ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(balance)).classes(f'text-3xl font-bold text-{color}-600')
+
+                    # Savings Rate Card
+                    savings_rate = (stats["balance"] / stats["total_income"]) * 100 if stats["total_income"] > 0 else 0
                     
-                    # Top Category Card
-                    with ui.card().classes('flex-1 p-4 border-l-4 border-pink-500 shadow-sm'):
-                        ui.label('Top Category').classes('text-gray-500 text-sm uppercase tracking-wide')
-                        if stats["by_category"]:
-                            top_cat = max(stats["by_category"], key=stats["by_category"].get)
-                            amount = stats['by_category'][top_cat]
-                            ui.label(f"{top_cat}").classes('text-3xl font-bold text-gray-800')
-                            ui.label(format_currency(amount)).classes('text-sm text-gray-500')
-                        else:
-                            ui.label('N/A').classes('text-3xl font-bold text-gray-800')
+                    if savings_rate > 1:
+                        savings_color = 'green'
+                    elif savings_rate < -1:
+                        savings_color = 'red'
+                    else:
+                        savings_color = 'blue' # Neutral color for near-zero rates
+
+                    with ui.card().classes(f'flex-1 p-4 border-l-4 border-{savings_color}-500 shadow-sm'):
+                        ui.label('Savings Rate').classes('text-gray-500 text-sm uppercase tracking-wide')
+                        ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
                 # Chart & Recent Transactions
                 with ui.row().classes('w-full gap-6'):
