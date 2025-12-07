@@ -14,7 +14,7 @@ class Settings(BaseSettings):
 
     # App Constants
     EXPENSE_CATEGORIES: list[str] = [
-        "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten",
+        "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten", "Miete",
         "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Sonstiges"
     ]
     INCOME_CATEGORIES: list[str] = ["Gehalt", "Geschenk", "Sonstiges"]

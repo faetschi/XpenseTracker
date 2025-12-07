@@ -2,7 +2,7 @@
 
 - [x] at add_expense Amount input, always round decimal numbers, e.g. "17.5" should always be saved as "17.50", input "5" as "5.00".
 
-- [ ] in settings page, openai and gemini api key should be hidden from UI if AI provider: "testing" is selected. the according API key settings should only show if the appropriate provider is selected, e.g. "openai" provider then the OpenAI API key setting should show, vise-versa if "gemini" selected then show google gemini api key setting
+- [x] in settings page, openai and gemini api key should be hidden from UI if AI provider: "testing" is selected. the according API key settings should only show if the appropriate provider is selected, e.g. "openai" provider then the OpenAI API key setting should show, vise-versa if "gemini" selected then show google gemini api key setting
 
 - [ ] fix UI darkmode, it currently looks very bad for readability for the user
 

@@ -11,23 +11,58 @@ class ListEditor:
         
     def render(self):
         with ui.column().classes('w-full gap-2 p-2 border rounded-lg bg-gray-50'):
-            ui.label(self.label).classes('text-sm font-bold text-gray-600')
+            with ui.row().classes('w-full justify-between items-center'):
+                ui.label(self.label).classes('text-sm font-bold text-gray-600')
+                ui.label('Drag to reorder').classes('text-xs text-gray-400 italic')
             
-            self.chip_container = ui.row().classes('w-full gap-2 flex-wrap')
+            # Container for sortable items
+            self.chip_container = ui.element('div').classes('w-full gap-2 flex flex-wrap items-center')
             self.update_chips()
+            
+            # Enable SortableJS on the container
+            ui.add_head_html('<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>')
+            
+            # Initialize SortableJS
+            ui.run_javascript(f'''
+                new Sortable(getElement({self.chip_container.id}), {{
+                    animation: 150,
+                    ghostClass: 'opacity-50',
+                    onEnd: function (evt) {{
+                        // Emit custom event to Python
+                        emitEvent('reorder_{self.chip_container.id}', {{
+                            oldIndex: evt.oldIndex,
+                            newIndex: evt.newIndex
+                        }});
+                    }}
+                }});
+            ''')
+            
+            # Listen for the reorder event
+            ui.on(f'reorder_{self.chip_container.id}', self.handle_reorder)
             
             with ui.row().classes('w-full items-center gap-2'):
                 self.new_item_input = ui.input(placeholder='Add item...').classes('flex-grow dense') \
                     .on('keydown.enter', self.add_item)
                 ui.button(icon='add', on_click=self.add_item).props('flat round dense color=green')
 
+    def handle_reorder(self, e):
+        old_index = e.args['oldIndex']
+        new_index = e.args['newIndex']
+        if old_index is not None and new_index is not None:
+            item = self.items.pop(old_index)
+            self.items.insert(new_index, item)
+            # Force re-render to ensure UI state (classes) matches server state
+            self.update_chips()
+
     def update_chips(self):
         self.chip_container.clear()
         with self.chip_container:
             for item in self.items:
-                ui.chip(item, removable=True) \
-                    .props('color=blue-1 text-color=blue-9') \
-                    .on('remove', lambda _, i=item: self.remove_item(i))
+                # Chip-like styling
+                with ui.element('div').classes('flex items-center gap-1 bg-blue-100 rounded-full pl-3 pr-1 py-1 cursor-move select-none hover:bg-blue-200 transition-colors'):
+                    ui.label(item).classes('text-blue-900 text-sm font-medium')
+                    ui.icon('close').classes('cursor-pointer text-red-500 hover:text-red-700 text-xs ml-1') \
+                        .on('click', lambda _, val=item: self.remove_item(val))
 
     def add_item(self):
         val = self.new_item_input.value.strip()
@@ -66,7 +101,8 @@ def settings_page():
                     label='Google API Key',
                     value=settings.GOOGLE_API_KEY,
                     password=True
-                ).props('reveal').classes('w-full')
+                ).props('reveal').classes('w-full') \
+                 .bind_visibility_from(ai_provider, 'value', backward=lambda v: v == 'gemini')
                 with google_key:
                     ui.tooltip('API key for Google Generative AI / Gemini.').props('anchor="bottom left" self="top left"')
                 
@@ -74,7 +110,8 @@ def settings_page():
                     label='OpenAI API Key',
                     value=settings.OPENAI_API_KEY,
                     password=True
-                ).props('reveal').classes('w-full')
+                ).props('reveal').classes('w-full') \
+                 .bind_visibility_from(ai_provider, 'value', backward=lambda v: v == 'openai')
                 with openai_key:
                     ui.tooltip('API key for OpenAI.').props('anchor="bottom left" self="top left"')
 
