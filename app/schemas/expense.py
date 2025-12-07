@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, ConfigDict
 from datetime import date
 from typing import Optional
 from decimal import Decimal
@@ -24,5 +24,4 @@ class Expense(ExpenseBase):
     receipt_image_path: Optional[str]
     is_verified: bool
     
-    class Config:
-        from_attributes = True
+    model_config = ConfigDict(from_attributes=True)
