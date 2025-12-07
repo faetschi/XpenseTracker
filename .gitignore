@@ -4,3 +4,4 @@ uploads/*.e
 venv/
 app/user_settings.json
 uploads/*
+backups/
