@@ -34,6 +34,38 @@ def add_expense_page():
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         ui.label('➕ Add New Expense').classes('text-2xl font-bold text-gray-800')
         
+        # --- Helpers ---
+        def sanitize_amount(e):
+            # Only update if comma is present to avoid race conditions while typing digits
+            val = e.value
+            if val and ',' in val:
+                e.sender.set_value(val.replace(',', '.'))
+
+        def format_on_blur(e):
+            val = e.sender.value
+            if not val: return
+            
+            # Clean up: allow only digits and one dot
+            cleaned = ''
+            dot_seen = False
+            for c in val.replace(',', '.'):
+                if c.isdigit():
+                    cleaned += c
+                elif c == '.' and not dot_seen:
+                    cleaned += c
+                    dot_seen = True
+            
+            try:
+                if cleaned:
+                    num = float(cleaned)
+                    e.sender.set_value(f"{abs(num):.2f}")
+                else:
+                    e.sender.set_value(None)
+            except ValueError:
+                e.sender.set_value(None)
+                
+        # --- Main Content ---
+
         with ui.tabs().classes('w-full text-blue-600').props('align="left"') as tabs:
             ai_tab = ui.tab('AI Upload')
             manual_tab = ui.tab('Manual Entry')
@@ -76,11 +108,14 @@ def add_expense_page():
                         for entry in list(active_receipts):
                             try:
                                 inputs = entry['inputs']
+                                # Sanitize amount (replace comma with dot)
+                                amount_val = str(inputs['amount'].value).replace(',', '.')
+                                
                                 expense_data = ExpenseCreate(
                                     date=date.fromisoformat(inputs['date'].value),
                                     category=inputs['category'].value,
                                     description=inputs['description'].value,
-                                    amount=inputs['amount'].value,
+                                    amount=amount_val,
                                     currency=inputs['currency'].value
                                 )
                                 db = next(get_db())
@@ -152,7 +187,9 @@ def add_expense_page():
                                                 date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date')
                                                 cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=result.category).classes('w-full')
                                                 desc_input = ui.input(label="Description", value=result.description).classes('col-span-2 w-full')
-                                                amount_input = ui.number(label="Amount", value=float(result.amount), format="%.2f").classes('w-full')
+                                                amount_input = ui.input(label="Amount", value=f"{float(result.amount):.2f}").classes('w-full') \
+                                                    .on('input', sanitize_amount) \
+                                                    .on('blur', format_on_blur)
                                                 curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=result.currency).classes('w-full')
                                     
                                     entry['inputs'] = {
@@ -201,7 +238,7 @@ def add_expense_page():
                             with date_field.add_slot('prepend'):
                                 ui.icon('event').classes('cursor-pointer').on('click', lambda: date_menu.open())
                                 with ui.menu() as date_menu:
-                                    ui.date().bind_value(date_field)
+                                    ui.date().bind_value(date_field).props('mask="DD.MM.YYYY"')
                         
                         category_select = ui.select(
                             options=settings.EXPENSE_CATEGORIES,
@@ -222,17 +259,22 @@ def add_expense_page():
                         
                         desc_input = ui.input(label="Description").classes('col-span-2 w-full')
                         
-                        amount_input = ui.number(label="Amount", format="%.2f").props('placeholder="0.00"').classes('w-full')
+                        amount_input = ui.input(label="Amount", placeholder="0.00").classes('w-full') \
+                            .on('input', sanitize_amount) \
+                            .on('blur', format_on_blur)
                         currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-full')
                     
                     def save_manual():
                         try:
+                            # Sanitize amount (replace comma with dot)
+                            amount_val = str(amount_input.value).replace(',', '.')
+
                             expense_data = ExpenseCreate(
-                                date=date.fromisoformat(date_field.value),
+                                date=datetime.strptime(date_field.value, '%d.%m.%Y').date(),
                                 type=type_toggle.value.lower(),
                                 category=category_select.value,
                                 description=desc_input.value,
-                                amount=amount_input.value,
+                                amount=amount_val,
                                 currency=currency_select.value
                             )
                             db = next(get_db())

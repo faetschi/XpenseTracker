@@ -5,6 +5,7 @@ from app.services.expense_service import ExpenseService
 from app.utils.formatting import format_currency
 from app.core.config import settings
 from app.ui.layout import theme
+import json
 
 def history_page():
     theme('history')
@@ -102,10 +103,22 @@ def history_page():
                  'cellEditor': 'agSelectCellEditor',
                  'cellEditorParams': {'values': ['expense', 'income']}},
                 {'headerName': 'Category', 'field': 'category', 'sortable': True, 'filter': True, 'editable': True, 
-                 'cellEditor': 'agSelectCellEditor', 
-                 'cellEditorParams': {'values': settings.EXPENSE_CATEGORIES + settings.INCOME_CATEGORIES}},
+                 ':cellEditorSelector': f"""(params) => {{
+                     if (params.data.type === 'income') {{
+                         return {{
+                             component: 'agSelectCellEditor',
+                             params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                         }};
+                     }}
+                     return {{
+                         component: 'agSelectCellEditor',
+                         params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
+                     }};
+                 }}"""
+                },
                 {'headerName': 'Description', 'field': 'description', 'sortable': True, 'filter': True, 'editable': True},
                 {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True,
+                 'valueFormatter': "Number(value).toFixed(2)",
                  'cellClassRules': {
                      'text-green-600 font-bold': 'data.type == "income"',
                      'text-red-600': 'data.type == "expense"'

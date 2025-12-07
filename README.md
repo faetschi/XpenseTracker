@@ -15,7 +15,7 @@ A self-hosted, Python-based expense and income tracking application with AI rece
 - **Frontend**: NiceGui
 - **Backend**: Python, FastAPI, SQLAlchemy
 - **Database**: PostgreSQL
-- **AI**: Google Gemini API / OpenAI API
+- **AI**: Google Gemini API / OpenAI API (& more to come)
 
 ## Installation Setup
 
