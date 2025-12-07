@@ -1,4 +1,6 @@
 .env
 **/__pycache__/**
-uploads/*
+uploads/*.e
 venv/
+app/user_settings.json
+uploads/*

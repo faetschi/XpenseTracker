@@ -29,6 +29,10 @@ class Settings(BaseSettings):
     # Logging Settings
     LOG_LEVEL: str = "INFO"
 
+    # UI Settings
+    DEFAULT_CURRENCY: str = "EUR"
+    THEME_MODE: str = "light" # light, dark, auto
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
@@ -36,3 +40,18 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env")
 
 settings = Settings()
+
+# Load user settings from JSON if it exists (overrides .env)
+import json
+import os
+
+USER_SETTINGS_PATH = "app/user_settings.json"
+if os.path.exists(USER_SETTINGS_PATH):
+    try:
+        with open(USER_SETTINGS_PATH, "r") as f:
+            user_data = json.load(f)
+            for key, value in user_data.items():
+                if hasattr(settings, key):
+                    setattr(settings, key, value)
+    except Exception as e:
+        print(f"Failed to load user settings: {e}")

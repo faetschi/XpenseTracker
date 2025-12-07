@@ -96,7 +96,7 @@ def add_expense_page():
                         if errors == 0 and saved_count > 0:
                             save_all_btn.classes(add='hidden')
 
-                    save_all_btn = ui.button('Save All', on_click=save_all) \
+                    save_all_btn = ui.button('Save All', on_click=save_all, icon='save') \
                         .classes('w-full bg-green-600 text-white mt-4 hidden')
 
                     async def handle_upload(e):
@@ -223,7 +223,7 @@ def add_expense_page():
                         desc_input = ui.input(label="Description").classes('col-span-2 w-full')
                         
                         amount_input = ui.number(label="Amount", format="%.2f").props('placeholder="0.00"').classes('w-full')
-                        currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value="EUR").classes('w-full')
+                        currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-full')
                     
                     def save_manual():
                         try:
@@ -244,4 +244,4 @@ def add_expense_page():
                         except Exception as e:
                             ui.notify(f'Error: {str(e)}', type='negative')
 
-                    ui.button('Save Transaction', on_click=save_manual).classes('mt-6 bg-blue-600 text-white w-full')
+                    ui.button('Save Transaction', on_click=save_manual, icon='save').classes('mt-6 bg-blue-600 text-white w-full')
