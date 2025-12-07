@@ -5,11 +5,20 @@ A self-hosted, Python-based expense and income tracking application with AI rece
 ![XpenseTracker Dashboard](docs/dashboard.png)
 
 ## Features
-- **Modern UI**: Built with the web-based NiceGui framework.
-- **Financial Dashboard**: Overview of your income, expenses, balance, and savings rate with interactive charts.
-- **AI Receipt Scanning**: Upload a receipt and let AI extract the details automatically.
-- **Income & Expense Tracking**: Log both earnings and spendings.
-- **Transaction History**: View all your transactions with inline editing capabilities.
+- **Modern UI**  
+  Built with the web-based NiceGui framework.
+- **Financial Dashboard**  
+  Overview of your income, expenses, balance, and savings rate with interactive charts.
+- **AI Receipt Scanning**  
+  Upload a receipt and let AI extract the details automatically.
+- **Income & Expense Tracking**  
+  Log both earnings and spendings with strict input validation.
+- **Transaction History**  
+  View all your transactions with inline editing and dynamic category filtering.
+- **Customizable Settings**  
+  Manage categories, currencies, and AI providers.
+- **Data Safety**  
+  Includes scripts for automated data backups.
 
 ## Tech Stack
 - **Frontend**: NiceGui
