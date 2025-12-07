@@ -54,7 +54,7 @@ A self-hosted, Python-based expense and income tracking application with AI rece
 
 4.  **Run Tests**:
     <br>
-    See [tests/README.md](tests/README.md) for detailed testing instructions.
+    See [tests/README.md](tests/TESTING.md) for detailed testing instructions.
     ```powershell
     & ".venv/Scripts/python.exe" -m pytest tests/
     ```
