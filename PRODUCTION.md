@@ -2,9 +2,7 @@
 
 ## Data Persistence
 Data is stored in two places:
-1.  **Database**: 
-<br>
-Stored in a Docker Volume named `postgres_data`. This persists even when containers restart.
+1.  **Database**: <br> Stored in a Docker Volume named `postgres_data`. This persists even when containers restart.
 2.  **Files**:
     *   **Settings**: `app/user_settings.json` (Persists on host).
     *   **Environment**: `.env` (Persists on host).
