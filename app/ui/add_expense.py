@@ -16,6 +16,20 @@ logger = get_logger(__name__)
 def add_expense_page():
     theme('add_expense')
     
+    # Custom CSS
+    ## center and enlarge the upload button
+    ui.add_css('''
+        .receipt-uploader .q-uploader__header-content {
+            justify-content: center !important;
+        }
+        .receipt-uploader .q-uploader__header .q-icon {
+            font-size: 3rem !important;
+        }
+        .receipt-uploader .q-uploader__header {
+            padding: 5px !important;
+        }
+    ''')
+    
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         ui.label('➕ Add New Expense').classes('text-2xl font-bold text-gray-800')
         
@@ -30,8 +44,19 @@ def add_expense_page():
                 with ui.card().classes('w-full p-6 shadow-sm'):
                     ui.label('Upload Receipt').classes('text-lg font-bold mb-4 text-gray-700')
                     
-                    # Image Preview
-                    preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden')
+                    # Image Preview & Dialog
+                    with ui.dialog() as image_dialog, ui.card().classes('w-full max-w-5xl p-0 overflow-hidden'):
+                        large_image = ui.image().classes('w-full max-h-[80vh] object-contain')
+                        with ui.row().classes('w-full justify-center p-2 bg-gray-100'):
+                            ui.button('Close', on_click=image_dialog.close).props('flat')
+
+                    def show_full_image():
+                        if preview_image.source:
+                            large_image.set_source(preview_image.source)
+                            image_dialog.open()
+
+                    preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden cursor-pointer hover:opacity-80 transition-opacity') \
+                        .on('click', show_full_image)
 
                     # Container for manual entry -> initially hidden
                     ai_form_container = ui.column().classes('w-full gap-4 mt-4')
@@ -139,8 +164,8 @@ def add_expense_page():
                             uploader.reset()
 
                     uploader = ui.upload(on_upload=handle_upload, label="Drop receipt image here", auto_upload=True) \
-                        .props('flat bordered color=blue-6 accept=".jpg, .jpeg, .png, .heic" no-thumbnails') \
-                        .classes('w-full mb-6')
+                        .props('color=bg-blue-600 accept=".jpg, .jpeg, .png, .heic" no-thumbnails') \
+                        .classes('w-full mb-6 receipt-uploader')
 
             # --- MANUAL TAB ---
             with ui.tab_panel(manual_tab).classes('p-0'):
@@ -148,7 +173,9 @@ def add_expense_page():
                     ui.label('Manual Entry').classes('text-lg font-bold mb-4 text-gray-700')
                     
                     # Type Toggle
-                    type_toggle = ui.toggle(['Expense', 'Income'], value='Expense').props('spread').classes('w-full mb-4')
+                    type_toggle = ui.toggle(['Expense', 'Income'], value='Expense') \
+                        .props('spread toggle-color=red') \
+                        .classes('w-full mb-4')
                     
                     with ui.grid(columns=2).classes('w-full gap-4'):
                         # Date Picker
@@ -167,15 +194,17 @@ def add_expense_page():
                             if type_toggle.value == 'Expense':
                                 category_select.options = settings.EXPENSE_CATEGORIES
                                 category_select.value = settings.EXPENSE_CATEGORIES[0]
+                                type_toggle.props('toggle-color=red')
                             else:
                                 category_select.options = settings.INCOME_CATEGORIES
                                 category_select.value = settings.INCOME_CATEGORIES[0]
+                                type_toggle.props('toggle-color=green')
                         
                         type_toggle.on_value_change(update_categories)
                         
                         desc_input = ui.input(label="Description").classes('col-span-2 w-full')
                         
-                        amount_input = ui.number(label="Amount", value=0.0, format="%.2f").classes('w-full')
+                        amount_input = ui.number(label="Amount", format="%.2f").props('placeholder="0.00"').classes('w-full')
                         currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value="EUR").classes('w-full')
                     
                     def save_manual():
@@ -193,7 +222,7 @@ def add_expense_page():
                             ui.notify('Transaction saved successfully!', type='positive')
                             # Reset
                             desc_input.value = ""
-                            amount_input.value = 0.0
+                            amount_input.value = None
                         except Exception as e:
                             ui.notify(f'Error: {str(e)}', type='negative')
 
