@@ -119,7 +119,7 @@ class ReceiptService:
             # Run synchronous scanner in a separate thread to avoid blocking the event loop
             result = await asyncio.to_thread(scanner.scan_receipt, file_path)
             
-            logger.info(f"AI Scan result: {result}")
+            logger.debug(f"AI Scan result: {result}")
             
             return result, file_path
 

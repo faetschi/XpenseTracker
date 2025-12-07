@@ -3,6 +3,7 @@ from app.core.database import Base, engine
 from app.ui.dashboard import dashboard_page
 from app.ui.add_expense import add_expense_page
 from app.ui.history import history_page
+from app.ui.settings_page import settings_page
 import os
 
 # Initialize DB tables
@@ -23,5 +24,9 @@ def add():
 @ui.page('/history')
 def history():
     history_page()
+
+@ui.page('/settings')
+def settings():
+    settings_page()
 
 ui.run(title='XpenseTracker', port=8501, favicon='💰')

@@ -1,15 +1,17 @@
-- Upload 10-15 Test-Receipts and Test with OpenAI / Gemini if it adds expenses correctly (adjust ai scanning methods if necessary)
+- Upload Test-Receipts (tests/test_receipts) and Test with AI Scanners (stub testing_Scanner / OpenAI / Gemini) if it adds expenses correctly (adjust ai scanning methods if necessary)
 - Add automatic tests for the ai expense receipt scanning (to test functionality on changes and for different future AI scanner providers)
 
-- make all properties configured in core/config.py configurable via UI by the user
+- [x] make it possible to upload batch receipt images (like 5 images at the same time), and to control all of them by scrolling down one by one and/or press save to batch save all of them
+
+- [x] make all properties configured in core/config.py configurable via UI by the user
 
 
 ## add_expense
 
-- in the ui, the big plus "+" button that enables me the upload images should be centered and bigger / better visible for the user
+- [x] in the ui, the big plus "+" button that enables me the upload images should be centered and bigger / better visible for the user
 
-- it should be possible to click the image preview in add_expense to enlarge it and view the full original picture
-```python
-# Image Preview
-preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden')
-```
+- [x] it should be possible to click the image preview in add_expense to enlarge it and view the full original picture
+    ```python
+    # Image Preview
+    preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden')
+    ```

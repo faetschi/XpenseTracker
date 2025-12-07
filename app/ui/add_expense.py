@@ -16,7 +16,8 @@ logger = get_logger(__name__)
 def add_expense_page():
     theme('add_expense')
     
-    # Custom CSS
+    # --- Custom CSS ---
+    
     ## center and enlarge the upload button
     ui.add_css('''
         .receipt-uploader .q-uploader__header-content {
@@ -42,7 +43,7 @@ def add_expense_page():
             # --- AI TAB ---
             with ui.tab_panel(ai_tab).classes('p-0'):
                 with ui.card().classes('w-full p-6 shadow-sm'):
-                    ui.label('Upload Receipt').classes('text-lg font-bold mb-4 text-gray-700')
+                    ui.label('Upload Receipts').classes('text-lg font-bold mb-4 text-gray-700')
                     
                     # Image Preview & Dialog
                     with ui.dialog() as image_dialog, ui.card().classes('w-full max-w-5xl p-0 overflow-hidden'):
@@ -50,56 +51,61 @@ def add_expense_page():
                         with ui.row().classes('w-full justify-center p-2 bg-gray-100'):
                             ui.button('Close', on_click=image_dialog.close).props('flat')
 
-                    def show_full_image():
-                        if preview_image.source:
-                            large_image.set_source(preview_image.source)
-                            image_dialog.open()
+                    def show_full_image(src):
+                        large_image.set_source(src)
+                        image_dialog.open()
 
-                    preview_image = ui.image().classes('max-h-64 w-full object-contain mb-4 rounded-lg hidden cursor-pointer hover:opacity-80 transition-opacity') \
-                        .on('click', show_full_image)
-
-                    # Container for manual entry -> initially hidden
-                    ai_form_container = ui.column().classes('w-full gap-4 mt-4')
-                    ai_form_container.set_visibility(False)
+                    # Container for receipt cards
+                    receipts_container = ui.column().classes('w-full gap-4 mt-4')
                     
-                    with ai_form_container:
-                        with ui.grid(columns=2).classes('w-full gap-4'):
-                            ai_date = ui.input(label='Date').props('type=date')
-                            ai_category = ui.select(
-                                options=settings.EXPENSE_CATEGORIES,
-                                label="Category"
-                            ).classes('w-full')
-                            ai_desc = ui.input(label="Description").classes('col-span-2 w-full')
-                            ai_amount = ui.number(label="Amount", format="%.2f").classes('w-full')
-                            ai_currency = ui.select(options=settings.CURRENCIES, label="Currency").classes('w-full')
-                        
-                        def save_ai():
+                    # State tracking
+                    active_receipts = []
+                    upload_state = {'active_count': 0, 'notification': None}
+
+                    def remove_receipt(entry):
+                        if entry in active_receipts:
+                            active_receipts.remove(entry)
+                        entry['card'].delete()
+                        if not active_receipts:
+                            save_all_btn.classes(add='hidden')
+
+                    async def save_all():
+                        saved_count = 0
+                        errors = 0
+                        # Iterate over a copy since this list might be modified
+                        for entry in list(active_receipts):
                             try:
+                                inputs = entry['inputs']
                                 expense_data = ExpenseCreate(
-                                    date=date.fromisoformat(ai_date.value),
-                                    category=ai_category.value,
-                                    description=ai_desc.value,
-                                    amount=ai_amount.value,
-                                    currency=ai_currency.value
+                                    date=date.fromisoformat(inputs['date'].value),
+                                    category=inputs['category'].value,
+                                    description=inputs['description'].value,
+                                    amount=inputs['amount'].value,
+                                    currency=inputs['currency'].value
                                 )
                                 db = next(get_db())
                                 ExpenseService.create_expense(db, expense_data)
-                                ui.notify('Expense saved successfully!', type='positive')
-                                # Clear form and hide
-                                ai_desc.value = ""
-                                ai_amount.value = None
-                                ai_form_container.set_visibility(False) ### hides the manual entry form
-                                preview_image.classes(add='hidden')
-                                preview_image.set_source('')
+                                remove_receipt(entry)
+                                saved_count += 1
                             except Exception as e:
-                                ui.notify(f'Error saving: {str(e)}', type='negative')
+                                errors += 1
+                                ui.notify(f'Error saving item: {str(e)}', type='negative')
+                        
+                        if saved_count > 0:
+                            ui.notify(f'Saved {saved_count} expenses successfully!', type='positive')
+                        if errors == 0 and saved_count > 0:
+                            save_all_btn.classes(add='hidden')
 
-                        ui.button('Save to Database', on_click=save_ai).classes('w-full bg-green-600 text-white mt-4')
+                    save_all_btn = ui.button('Save All', on_click=save_all) \
+                        .classes('w-full bg-green-600 text-white mt-4 hidden')
 
                     async def handle_upload(e):
                         logger.info(f"File Upload triggered.")
                         
-                        notification = ui.notification('Processing receipt...', type='info', spinner=True, timeout=None)
+                        upload_state['active_count'] += 1
+                        if upload_state['notification'] is None:
+                            upload_state['notification'] = ui.notification('Processing receipts...', type='info', spinner=True, timeout=None)
+                        
                         try:
                             # Extract content and filename
                             content = getattr(e, 'content', None)
@@ -119,53 +125,65 @@ def add_expense_page():
                             
                             if content is None:
                                 logger.error("Upload content missing")
-                                if notification:
-                                    notification.message = "Error: Upload content missing."
-                                    notification.spinner = False
-                                    notification.type = 'negative'
-                                    notification.timeout = 5000
+                                ui.notify("Error: Upload content missing.", type='negative', timeout=5000)
                                 return
 
                             # Delegate processing to ReceiptService
                             result, file_path = await ReceiptService.process_receipt(content, filename)
                             
-                            # Show Preview
-                            web_path = f"/{file_path.replace(os.sep, '/')}"
-                            preview_image.set_source(web_path)
-                            preview_image.classes(remove='hidden')
-
-                            # Update Form
-                            ai_date.value = result.date.strftime('%Y-%m-%d')
-                            ai_amount.value = float(result.amount)
-                            ai_currency.value = result.currency
-                            ai_category.value = result.category
-                            ai_desc.value = result.description
+                            # Create UI Card for this receipt
+                            with receipts_container:
+                                with ui.card().classes('w-full p-4 shadow-sm border border-gray-200 relative') as card:
+                                    entry = {'card': card}
+                                    
+                                    # Close Button
+                                    ui.button(icon='close', on_click=lambda: remove_receipt(entry)) \
+                                        .props('flat round dense color=red').classes('absolute top-2 right-2 z-10')
+                                    
+                                    with ui.row().classes('w-full gap-4 no-wrap items-start'):
+                                        # Image Preview
+                                        web_path = f"/{file_path.replace(os.sep, '/')}"
+                                        ui.image(web_path).classes('w-32 h-32 object-cover rounded cursor-pointer') \
+                                            .on('click', lambda src=web_path: show_full_image(src))
+                                        
+                                        # Form Fields
+                                        with ui.column().classes('flex-grow gap-2'):
+                                            with ui.grid(columns=2).classes('w-full gap-2'):
+                                                date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date')
+                                                cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=result.category).classes('w-full')
+                                                desc_input = ui.input(label="Description", value=result.description).classes('col-span-2 w-full')
+                                                amount_input = ui.number(label="Amount", value=float(result.amount), format="%.2f").classes('w-full')
+                                                curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=result.currency).classes('w-full')
+                                    
+                                    entry['inputs'] = {
+                                        'date': date_input,
+                                        'category': cat_input,
+                                        'description': desc_input,
+                                        'amount': amount_input,
+                                        'currency': curr_input
+                                    }
+                                    active_receipts.append(entry)
                             
-                            # Show the form for review
-                            ai_form_container.set_visibility(True)
+                            # Show Save All button
+                            save_all_btn.classes(remove='hidden')
                             
-                            # Update notification to success state
-                            if notification:
-                                notification.message = 'Receipt scanned! Review and save.'
-                                notification.spinner = False
-                                notification.type = 'positive'
-                                notification.timeout = 5000
-                            
-                            # Reset uploader to clear progress bar and file list
-                            uploader.reset()
+                            ui.notify('Receipt scanned! Review and save.', type='positive', timeout=5000)
                             
                         except Exception as err:
-                            if notification:
-                                notification.message = f'Error scanning receipt: {str(err)}'
-                                notification.spinner = False
-                                notification.type = 'negative'
-                                notification.timeout = 5000
+                            ui.notify(f'Error scanning receipt: {str(err)}', type='negative', timeout=5000)
                             logger.error(f"Error in handle_upload: {err}", exc_info=True)
-                            uploader.reset()
+                        finally:
+                            upload_state['active_count'] -= 1
+                            if upload_state['active_count'] <= 0:
+                                if upload_state['notification']:
+                                    upload_state['notification'].dismiss()
+                                    upload_state['notification'] = None
+                                uploader.reset()
 
-                    uploader = ui.upload(on_upload=handle_upload, label="Drop receipt image here", auto_upload=True) \
+                    uploader = ui.upload(on_upload=handle_upload, label="Drop receipt images here", auto_upload=True, multiple=True) \
                         .props('color=bg-blue-600 accept=".jpg, .jpeg, .png, .heic" no-thumbnails') \
                         .classes('w-full mb-6 receipt-uploader')
+
 
             # --- MANUAL TAB ---
             with ui.tab_panel(manual_tab).classes('p-0'):

@@ -30,6 +30,7 @@ def theme(current_page: str = None):
             nav_link('Dashboard', '/', 'dashboard', active=(current_page == 'dashboard'))
             nav_link('Add Expense', '/add', 'add_circle', active=(current_page == 'add_expense'))
             nav_link('History', '/history', 'history', active=(current_page == 'history'))
+            nav_link('Settings', '/settings', 'settings', active=(current_page == 'settings'))
     
     # Page background
     ui.query('body').classes('bg-gray-50')

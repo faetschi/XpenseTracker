@@ -4,6 +4,7 @@ import time
 from app.interfaces.scanner import ReceiptScanner
 from app.schemas.expense import ExpenseCreate
 from app.utils.logger import get_logger
+from app.core.config import settings
 
 """
 Testing scanner adapter for simulating receipt scanning during development and testing
@@ -17,7 +18,11 @@ class TestingScanner(ReceiptScanner):
     def scan_receipt(self, image_path: str) -> ExpenseCreate:
         # Simulate processing delay
         time.sleep(1.5)
-        self.logger.info(f"[TESTING] Simulating receipt scan for image: {image_path}")
+        
+        # Debugging logger level
+        # print(f"Logger Level: {self.logger.getEffectiveLevel()}, Config Level: {settings.LOG_LEVEL}")
+        
+        self.logger.info(f"Simulating receipt scan for image: {image_path}")
         
         return ExpenseCreate(
             date=date.today(),

@@ -26,6 +26,9 @@ class Settings(BaseSettings):
     # File Upload Settings
     UPLOAD_RETENTION_MINUTES: int = 2
 
+    # Logging Settings
+    LOG_LEVEL: str = "INFO"
+
     @property
     def DATABASE_URL(self) -> str:
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"

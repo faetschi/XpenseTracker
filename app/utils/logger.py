@@ -1,5 +1,6 @@
 import logging
 import sys
+from app.core.config import settings
 
 def get_logger(name: str) -> logging.Logger:
     """
@@ -22,6 +23,9 @@ def get_logger(name: str) -> logging.Logger:
         )
         handler.setFormatter(formatter)
         logger.addHandler(handler)
-        logger.setLevel(logging.INFO)
+        
+    # Always set log level from config (in case it changed or wasn't set correctly)
+    level = getattr(logging, settings.LOG_LEVEL.upper(), logging.INFO)
+    logger.setLevel(level)
         
     return logger
