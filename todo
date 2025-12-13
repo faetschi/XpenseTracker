@@ -10,6 +10,7 @@
 
 - [ ] adjust header of all pages to be responsible for different viewports (e.g. phone). Also do this for the History Page's table (on phone should still be usable)
 
+- [ ] in transaction history, give each transaction an ongoing id, so that i can find out the total done transactions and see if theres any missed/lost transaction over the history
 
 # Research
 - [ ] add local LLM adapter (maybe ollama or vllm?) with OCR capabitilty, that works the same way as a paid one does (testing!). That way, users dont need a paid AI API adapter (e.g. openai) and can still reliably use the app 
