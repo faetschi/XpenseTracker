@@ -15,54 +15,53 @@ def dashboard_page():
         ui.label('💰 XpenseTracker Dashboard').classes('text-2xl font-bold text-gray-800')
         
         # Filter Toolbar
-        with ui.row().classes('w-full items-center gap-4 p-3 bg-white rounded-lg shadow-sm border border-gray-200'):
-            current_year = date.today().year
-            current_month = date.today().month
-            
-            year_select = ui.select(
-                options=[current_year - i for i in range(settings.DASHBOARD_YEARS_LOOKBACK)], 
-                value=current_year, 
-                label="Year"
-            ).classes('w-24').props('outlined dense options-dense')
+        current_year = date.today().year
+        current_month = date.today().month
+        year_options = [current_year - i for i in range(settings.DASHBOARD_YEARS_LOOKBACK)]
+        month_map = {
+            1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
+            7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
+        }
 
-            month_map = {
-                1: 'January', 2: 'February', 3: 'March', 4: 'April', 5: 'May', 6: 'June',
-                7: 'July', 8: 'August', 9: 'September', 10: 'October', 11: 'November', 12: 'December'
-            }
-            
-            with ui.row().classes('items-center gap-1'):
-                def change_month(delta):
-                    if not month_select.value: return
-                    new_val = month_select.value + delta
-                    if 1 <= new_val <= 12:
-                        month_select.value = new_val
+        def change_month(delta):
+            if not month_select.value:
+                return
+            new_val = month_select.value + delta
+            if 1 <= new_val <= 12:
+                month_select.value = new_val
 
-                btn_prev = ui.button(icon='chevron_left', on_click=lambda: change_month(-1)).props('flat dense round')
-                
-                month_select = ui.select(
-                    options=month_map, 
-                    value=current_month, 
-                    label="Month"
-                ).props('outlined dense options-dense behavior="menu"').classes('w-32')
-                
-                btn_next = ui.button(icon='chevron_right', on_click=lambda: change_month(1)).props('flat dense round')
+        def toggle_month(e):
+            if e.value:
+                month_select.disable()
+                btn_prev.disable()
+                btn_next.disable()
+                month_select.value = None
+            else:
+                month_select.enable()
+                btn_prev.enable()
+                btn_next.enable()
+                month_select.value = current_month
 
-            # ui.space() ## spacer to push toggle to right
-            
-            # "All Year" toggle (clears month)
-            def toggle_month(e):
-                if e.value:
-                    month_select.disable()
-                    btn_prev.disable()
-                    btn_next.disable()
-                    month_select.value = None
-                else:
-                    month_select.enable()
-                    btn_prev.enable()
-                    btn_next.enable()
-                    month_select.value = current_month
-                    
-            all_year_switch = ui.switch('Whole Year', on_change=toggle_month)
+        with ui.row().classes('filter-toolbar w-full gap-3 p-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-row items-start justify-start'):
+            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start'):
+                    year_select = ui.select(
+                        options=year_options,
+                        value=current_year,
+                        label="Year"
+                    ).props('outlined dense options-dense behavior="menu"').classes('filter-select px-1')
+            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start flex-nowrap'):
+                    btn_prev = ui.button(icon='chevron_left', on_click=lambda: change_month(-1)).props('flat round dense color=gray')
+                    month_select = ui.select(
+                        options=month_map,
+                        value=current_month,
+                        label="Month"
+                    ).props('outlined dense options-dense behavior="menu"').classes('filter-select px-1')
+                    btn_next = ui.button(icon='chevron_right', on_click=lambda: change_month(1)).props('flat round dense color=gray')
+            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start flex-wrap'):
+                    all_year_switch = ui.switch('Whole Year', on_change=toggle_month).classes('filter-input px-1')
 
         # Content Container (to be refreshed)
         content = ui.column().classes('w-full gap-6')
@@ -82,23 +81,23 @@ def dashboard_page():
 
             with content:
                 # Metrics Row
-                with ui.row().classes('w-full gap-4'):
+                with ui.row().classes('w-full gap-4 flex-col md:flex-row'):
                     period_label = 'All Year' if not selected_month else date(2000, selected_month, 1).strftime('%B')
                     
                     # --- Income Card ---
-                    with ui.card().classes('flex-1 p-4 border-l-4 border-green-500 shadow-sm'):
+                    with ui.card().classes('flex-1 w-full p-4 border-l-4 border-green-500 shadow-sm'):
                         ui.label(f"Income ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(stats["total_income"])).classes('text-3xl font-bold text-gray-800')
 
                     # --- Expenses Card ---
-                    with ui.card().classes('flex-1 p-4 border-l-4 border-red-500 shadow-sm'):
+                    with ui.card().classes('flex-1 w-full p-4 border-l-4 border-red-500 shadow-sm'):
                         ui.label(f"Expenses ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         expenses_label = ui.label(format_currency(stats["total_spent"])).classes('text-3xl font-bold text-gray-800')
 
                     # --- Leftover-Balance Card ---
                     balance = stats["balance"]
                     color = 'green' if balance >= 0 else 'red'
-                    with ui.card().classes(f'flex-1 p-4 border-l-4 border-{color}-500 shadow-sm'):
+                    with ui.card().classes(f'flex-1 w-full p-4 border-l-4 border-{color}-500 shadow-sm'):
                         ui.label(f"Leftover ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(balance)).classes(f'text-3xl font-bold text-{color}-600')
 
@@ -112,14 +111,14 @@ def dashboard_page():
                     else:
                         savings_color = 'blue' # Neutral color for near-zero rates
 
-                    with ui.card().classes(f'flex-1 p-4 border-l-4 border-{savings_color}-500 shadow-sm'):
+                    with ui.card().classes(f'flex-1 w-full p-4 border-l-4 border-{savings_color}-500 shadow-sm'):
                         ui.label('Savings Rate').classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
                 # --- Pie Chart & Recent Transactions ---
-                with ui.row().classes('w-full gap-4'):
+                with ui.row().classes('w-full gap-4 flex-col lg:flex-row'):
                     # Pie Chart
-                    with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
+                    with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
                         render_expenses_by_category_pie(
                             by_category=stats.get('by_category'),
@@ -128,7 +127,7 @@ def dashboard_page():
                         )
 
                     # --- Recent Transactions ---
-                    with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
+                    with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
                         ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
                         if expenses:
                             columns = [
@@ -144,7 +143,8 @@ def dashboard_page():
                                     'type': getattr(e, 'type', 'expense') # Fallback if not loaded yet
                                 } for e in expenses
                             ]
-                            table = ui.table(columns=columns, rows=rows, pagination=None).classes('w-full')
+                            with ui.element('div').classes('w-full overflow-x-auto'):
+                                table = ui.table(columns=columns, rows=rows, pagination=None).classes('w-full min-w-[320px]')
                             table.add_slot('body-cell-amount', '''
                                 <q-td :props="props" :class="props.row.type === 'income' ? 'text-green-600 font-bold' : 'text-red-600'">
                                     {{ props.row.type === 'income' ? '+' : '-' }} {{ props.value }}
