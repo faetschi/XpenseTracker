@@ -86,24 +86,24 @@ def dashboard_page():
                 with ui.row().classes('w-full gap-4'):
                     period_label = 'All Year' if not selected_month else date(2000, selected_month, 1).strftime('%B')
                     
-                    # Income Card
+                    # --- Income Card ---
                     with ui.card().classes('flex-1 p-4 border-l-4 border-green-500 shadow-sm'):
                         ui.label(f"Income ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(stats["total_income"])).classes('text-3xl font-bold text-gray-800')
 
-                    # Expenses Card
+                    # --- Expenses Card ---
                     with ui.card().classes('flex-1 p-4 border-l-4 border-red-500 shadow-sm'):
                         ui.label(f"Expenses ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
-                        ui.label(format_currency(stats["total_spent"])).classes('text-3xl font-bold text-gray-800')
+                        expenses_label = ui.label(format_currency(stats["total_spent"])).classes('text-3xl font-bold text-gray-800')
 
-                    # Leftover-Balance Card
+                    # --- Leftover-Balance Card ---
                     balance = stats["balance"]
                     color = 'green' if balance >= 0 else 'red'
                     with ui.card().classes(f'flex-1 p-4 border-l-4 border-{color}-500 shadow-sm'):
                         ui.label(f"Leftover ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(balance)).classes(f'text-3xl font-bold text-{color}-600')
 
-                    # Savings Rate Card
+                    # --- Savings Rate Card ---
                     savings_rate = (stats["balance"] / stats["total_income"]) * 100 if stats["total_income"] > 0 else 0
                     
                     if savings_rate > 1:
@@ -117,9 +117,9 @@ def dashboard_page():
                         ui.label('Savings Rate').classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
-                # Chart & Recent Transactions
+                # --- Pie Chart & Recent Transactions ---
                 with ui.row().classes('w-full gap-4'):
-                    # Chart
+                    # Pie Chart
                     with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
                         if stats["by_category"]:
@@ -127,11 +127,61 @@ def dashboard_page():
                             ### === Pie Chart Colors ===
                             fig = px.pie(df, values="Amount", names="Category", hole=0.5, color_discrete_sequence=px.colors.qualitative.Vivid) # color_discrete_sequence=["#FF5733", "#33FF57", "#3357FF", "#F333FF"])
                             fig.update_layout(margin=dict(t=0, b=0, l=0, r=0), height=300, showlegend=True)
-                            ui.plotly(fig).classes('w-full h-80')
+                            chart = ui.plotly(fig).classes('w-full h-80')
+
+                            def update_expenses_for_visible_labels(visible_labels: set[str]) -> None:
+                                visible_total = df[df['Category'].astype(str).isin(visible_labels)]['Amount'].sum()
+                                expenses_label.text = format_currency(visible_total)
+                                expenses_label.update()
+
+                            def handle_visible_labels_update(e):
+                                # NiceGUI may provide e.args either as a dict (preferred)
+                                # or as a list/tuple of arguments. Be defensive.
+                                payload = None
+                                if not e.args:
+                                    payload = None
+                                elif isinstance(e.args, dict):
+                                    payload = e.args
+                                elif isinstance(e.args, (list, tuple)):
+                                    payload = e.args[0] if len(e.args) == 1 else list(e.args)
+                                else:
+                                    payload = e.args
+
+                                visible: list[str] = []
+                                if isinstance(payload, dict):
+                                    visible = payload.get('visible', []) or []
+                                elif isinstance(payload, (list, tuple, set)):
+                                    visible = list(payload)
+
+                                visible_set = set(str(v) for v in visible)
+                                update_expenses_for_visible_labels(visible_set)
+
+                            # Emit current visible labels from Plotly's client-side graph state.
+                            # Use events that fire AFTER Plotly has applied the change to avoid being one click behind.
+                            emit_visible_js = f"""(eventData) => {{
+                                const root = document.getElementById('{chart.html_id}');
+                                const gd = root ? (root.querySelector('.js-plotly-plot') || root) : null;
+                                const labels =
+                                    (gd && gd.data && gd.data[0] && gd.data[0].labels) ||
+                                    (gd && gd._fullData && gd._fullData[0] && gd._fullData[0].labels) ||
+                                    [];
+                                const hidden =
+                                    (gd && gd.layout && gd.layout.hiddenlabels) ||
+                                    (gd && gd._fullLayout && gd._fullLayout.hiddenlabels) ||
+                                    [];
+                                const hiddenSet = new Set(hidden || []);
+                                const visible = (labels || []).filter(l => !hiddenSet.has(l));
+                                emit({{visible: visible}});
+                                return true;
+                            }}"""
+
+                            chart.on('plotly_relayout', handle_visible_labels_update, js_handler=emit_visible_js)
+                            chart.on('plotly_restyle', handle_visible_labels_update, js_handler=emit_visible_js)
+                            chart.on('plotly_afterplot', handle_visible_labels_update, js_handler=emit_visible_js)
                         else:
                             ui.label('No data available for this period.').classes('text-gray-400 italic')
 
-                    # Recent Transactions
+                    # --- Recent Transactions ---
                     with ui.card().classes('flex-1 p-6 shadow-sm min-w-[300px]'):
                         ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
                         if expenses:

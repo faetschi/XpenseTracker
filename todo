@@ -13,3 +13,12 @@
 - [ ] adjust header of all pages to be responsible for different viewports (e.g. phone). Also do this for the History Page's table (on phone should still be usable)
 
 - [ ] currently using venv, maybe use uv instead? https://github.com/astral-sh/uv. first make a plan before implementation.
+
+- [ ] in transaction history, give each transaction an ongoing id, so that i can find out the total done transactions and see if theres any missed/lost transaction over the history
+
+# RaspberryPi Build
+- [ ] create automatic occasional backup (db dump to file) with automatic upload/persist to somewhere in the cloud, so that i can access backups on other devices in the cloud outside of the raspbeerypi environment
+
+# Research
+- [ ] add local LLM adapter (maybe ollama or vllm?) with OCR capabitilty, that works the same way as a paid one does (testing!). That way, users dont need a paid AI API adapter (e.g. openai) and can still reliably use the app 
+https://ollama.com/blaifa/InternVL3_5
