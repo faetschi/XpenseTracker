@@ -43,15 +43,17 @@ def dashboard_page():
                 month_select.value = current_month
 
         with ui.row().classes('filter-toolbar w-full gap-3 p-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-row items-start justify-start'):
-            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
-                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start'):
+            # Year Selector
+            with ui.column().classes('filter-group w-full gap-3 items-center md:items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full md:max-w-md justify-start'):
                     year_select = ui.select(
                         options=year_options,
                         value=current_year,
                         label="Year"
                     ).props('outlined dense options-dense behavior="menu"').classes('filter-select px-1')
-            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
-                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start flex-nowrap'):
+            # Month Selector
+            with ui.column().classes('filter-group w-full gap-3 items-center md:items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full md:max-w-md justify-start flex-nowrap'):
                     btn_prev = ui.button(icon='chevron_left', on_click=lambda: change_month(-1)).props('flat round dense color=gray')
                     month_select = ui.select(
                         options=month_map,
@@ -59,9 +61,14 @@ def dashboard_page():
                         label="Month"
                     ).props('outlined dense options-dense behavior="menu"').classes('filter-select px-1')
                     btn_next = ui.button(icon='chevron_right', on_click=lambda: change_month(1)).props('flat round dense color=gray')
-            with ui.column().classes('w-full gap-3 items-start lg:w-auto'):
-                with ui.row().classes('items-center gap-1 w-full max-w-md justify-start flex-wrap'):
-                    all_year_switch = ui.switch('Whole Year', on_change=toggle_month).classes('filter-input px-1')
+            # Toggle Month
+            with ui.column().classes('filter-group w-full gap-3 items-center md:items-start lg:w-auto'):
+                with ui.row().classes('items-center gap-1 w-full md:max-w-md justify-center md:justify-start flex-wrap'):
+                    all_year_switch = (
+                        ui.switch('Whole Year', on_change=toggle_month)
+                        .classes('filter-input filter-switch px-1')
+                        .style('margin-left: auto; margin-right: auto; display: flex; justify-content: center;')
+                    )
 
         # Content Container (to be refreshed)
         content = ui.column().classes('w-full gap-6')

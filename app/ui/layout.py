@@ -29,45 +29,7 @@ def theme(current_page: str = None):
     else: # auto
         dark.auto()
     
-    ui.add_css('.q-page-container { padding-top: 32px !important; }')
-    ui.add_css('''
-.filter-toolbar {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-}
-.filter-toolbar .filter-select,
-.filter-toolbar .filter-input {
-    width: 220px;
-    max-width: 220px;
-    min-width: 220px;
-}
-@media (max-width: 767px) {
-    .filter-toolbar {
-        flex-direction: column !important;
-        flex-wrap: wrap !important;
-    }
-    .filter-toolbar .filter-select,
-    .filter-toolbar .filter-input {
-        width: 100% !important;
-        max-width: 100% !important;
-        min-width: 0 !important;
-    }
-}
-.desktop-nav {
-    display: flex;
-}
-.mobile-nav-button {
-    display: none;
-}
-@media (max-width: 695px) {
-    .desktop-nav {
-        display: none !important;
-    }
-    .mobile-nav-button {
-        display: flex !important;
-    }
-}
-''')
+    ui.add_head_html('<link rel="stylesheet" href="/ui/static/styles.css">')
 
     links = [
         ('Dashboard', '/', 'dashboard', 'dashboard'),

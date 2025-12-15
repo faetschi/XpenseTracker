@@ -12,6 +12,7 @@ Base.metadata.create_all(bind=engine)
 # Serve uploads directory
 os.makedirs('uploads', exist_ok=True)
 app.add_static_files('/uploads', 'uploads')
+app.add_static_files('/ui/static', 'app/ui/static')
 
 @ui.page('/')
 def index():

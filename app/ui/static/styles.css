@@ -1,0 +1,68 @@
+.q-page-container { padding-top: 32px !important; }
+
+/* Filter toolbar stays row until 767px */
+.filter-toolbar {
+    flex-direction: row !important;
+    flex-wrap: nowrap !important;
+}
+.filter-toolbar .filter-select,
+.filter-toolbar .filter-input {
+    width: 220px;
+    max-width: 220px;
+    min-width: 220px;
+}
+@media (max-width: 767px) {
+    .filter-toolbar {
+        flex-direction: column !important;
+        flex-wrap: wrap !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .filter-toolbar .filter-select,
+    .filter-toolbar .filter-input {
+        width: 100% !important;
+        max-width: 100% !important;
+        min-width: 0 !important;
+    }
+    .filter-toolbar > .filter-group {
+        width: 100% !important;
+        max-width: 100% !important;
+        align-items: center !important;
+        justify-content: center !important;
+    }
+    .filter-toolbar .filter-group {
+        align-items: center !important;
+    }
+    .filter-toolbar .filter-group:last-child .filter-input {
+        display: flex !important;
+        justify-content: center !important;
+        margin-left: auto !important;
+        margin-right: auto !important;
+    }
+    .filter-toolbar .filter-switch {
+        width: 100% !important;
+        display: flex !important;
+        justify-content: center !important;
+    }
+    .filter-toolbar .filter-switch .q-toggle {
+        margin-left: auto !important;
+        margin-right: auto !important;
+        display: inline-flex !important;
+    }
+}
+
+/* Nav visibility toggles at 695px */
+.desktop-nav {
+    display: flex;
+}
+.mobile-nav-button {
+    display: none;
+}
+@media (max-width: 695px) {
+    .desktop-nav {
+        display: none !important;
+    }
+    .mobile-nav-button {
+        display: flex !important;
+    }
+}
