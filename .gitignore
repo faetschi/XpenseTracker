@@ -5,3 +5,4 @@ venv/
 app/user_settings.json
 uploads/*
 backups/
+quick_start.bat

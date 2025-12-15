@@ -11,3 +11,5 @@
 - [ ] on the dashboard screen, change place of "Legend" in Piechart or the 2 buttons "download plot as png" and "procude by plot.ly", because currently they are on top of each other. Maybe move the 2 buttons from plot.ly to the bottom of the piechart (info: this only happens when mouse hovers over piechart)
 
 - [ ] adjust header of all pages to be responsible for different viewports (e.g. phone). Also do this for the History Page's table (on phone should still be usable)
+
+- [ ] currently using venv, maybe use uv instead? https://github.com/astral-sh/uv. first make a plan before implementation.
