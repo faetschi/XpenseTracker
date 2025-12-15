@@ -1,8 +1,10 @@
-from sqlalchemy.orm import Session
+from typing import Any, Dict, List
+
 from sqlalchemy import func
-from app.models.expense import Expense
-from app.schemas.expense import ExpenseCreate
-from typing import List, Dict, Any
+from sqlalchemy.orm import Session
+
+from app.db.models import Expense
+from app.db.schemas import ExpenseCreate
 
 class ExpenseService:
     @staticmethod

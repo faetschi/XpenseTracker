@@ -1,7 +1,7 @@
 import base64
 from openai import OpenAI
 from app.interfaces.scanner import ReceiptScanner
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 from app.core.config import settings
 from app.core.prompts import RECEIPT_ANALYSIS_PROMPT
 from app.utils.ai_parsing import parse_ai_response

@@ -10,7 +10,7 @@ from datetime import date
 from app.services.receipt_service import ReceiptService
 from app.services.expense_service import ExpenseService
 from app.core.config import settings
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 
 # Path to test receipts
 TEST_RECEIPTS_DIR = os.path.join(os.path.dirname(__file__), 'test_receipts')

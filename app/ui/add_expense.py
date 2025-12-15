@@ -3,7 +3,7 @@ from datetime import date, datetime
 from app.core.database import get_db
 from app.services.expense_service import ExpenseService
 from app.services.receipt_service import ReceiptService
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 from app.core.config import settings
 from app.ui.layout import theme
 from app.utils.logger import get_logger

@@ -2,7 +2,7 @@ from datetime import date
 from decimal import Decimal
 import time
 from app.interfaces.scanner import ReceiptScanner
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 from app.utils.logger import get_logger
 from app.core.config import settings
 

@@ -1,5 +1,5 @@
 from abc import ABC, abstractmethod
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 
 class ReceiptScanner(ABC):
     @abstractmethod

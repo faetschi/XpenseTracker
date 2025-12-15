@@ -1,7 +1,7 @@
 import json
 from decimal import Decimal
 from datetime import datetime
-from app.schemas.expense import ExpenseCreate
+from app.db.schemas import ExpenseCreate
 
 def parse_ai_response(raw_response: str, image_path: str) -> ExpenseCreate:
     """
