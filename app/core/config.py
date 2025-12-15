@@ -24,7 +24,7 @@ class Settings(BaseSettings):
     DASHBOARD_YEARS_LOOKBACK: int = 10 # list of available years
 
     # File Upload Settings
-    UPLOAD_RETENTION_MINUTES: int = 2
+    UPLOAD_RETENTION_MINUTES: int = 1440
 
     # Logging Settings
     LOG_LEVEL: str = "INFO"

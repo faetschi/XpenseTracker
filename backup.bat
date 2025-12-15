@@ -36,14 +36,7 @@ if %ERRORLEVEL% NEQ 0 (
 )
 
 echo [2/2] Backing up Configuration...
-copy .env "%BACKUP_DIR%\.env" >nul
-if %ERRORLEVEL% NEQ 0 (
-    echo     ERROR: Failed to copy .env!
-    rmdir /s /q "%BACKUP_DIR%"
-    echo.
-    pause
-    exit /b 1
-)
+echo     Note: .env is intentionally excluded from backups (sensitive runtime config).
 
 if exist "app\user_settings.json" (
     copy app\user_settings.json "%BACKUP_DIR%\user_settings.json" >nul
@@ -56,7 +49,7 @@ if exist "app\user_settings.json" (
     )
 )
 
-echo     Configuration backed up.
+echo     Configuration backed up (excluding .env).
 
 echo.
 echo Backup completed successfully in: %BACKUP_DIR%
