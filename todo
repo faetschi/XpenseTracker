@@ -18,5 +18,6 @@
 
 
 # Research
+- [ ] TaskSync Tool for GitHub Copilot to save premium requests, url: https://marketplace.visualstudio.com/items?itemName=4regab.tasksync-chat
 - [ ] add local LLM adapter (maybe ollama or vllm?) with OCR capabitilty, that works the same way as a paid one does (testing!). That way, users dont need a paid AI API adapter (e.g. openai) and can still reliably use the app 
 https://ollama.com/blaifa/InternVL3_5
