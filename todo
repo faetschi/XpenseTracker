@@ -12,6 +12,8 @@
 
 - [ ] in transaction history, give each transaction an ongoing id, so that i can find out the total done transactions and see if theres any missed/lost transaction over the history
 
+- [ ] add re-occuring expenses feature, that can be configured and are "booked" every month automatically, e.g. subscriptions or rent
+
 
 # RaspberryPi Build
 - [ ] create automatic occasional backup (db dump to file) with automatic upload/persist to somewhere in the cloud, so that i can access backups on other devices in the cloud outside of the raspbeerypi environment
