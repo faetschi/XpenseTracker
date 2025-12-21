@@ -135,6 +135,11 @@ You need to tell the Pi to download the image from GitHub Packages (GHCR) instea
     docker compose up -d
     ```
 
+    *Note: The containers are configured with `restart: always`, so they will automatically start whenever the Pi reboots. To ensure Docker itself starts on boot, run:*
+    ```bash
+    sudo systemctl enable docker
+    ```
+
 7.  **Setup Weekly Backups (Optional):**
     To automatically backup your data every Sunday at 03:00 AM:
     ```bash
