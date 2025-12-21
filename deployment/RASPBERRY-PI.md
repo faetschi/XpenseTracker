@@ -37,11 +37,13 @@ Your PC is likely Intel/AMD (x86 architecture), while the Pi Zero 2 W is ARM64. 
     ```
 
 5.  **Initial Build & Push:**
-    Run the deployment script to build the ARM64 image and push it to GitHub Packages for the first time:
-    ```cmd
-    .\deployment\deploy.bat
-    ```
-    *This ensures the image exists on GitHub before you try to pull it on the Pi.*
+
+    - Adjust your ghcr.io Username/Imagename in `deploy.bat` 
+    - Run the deployment script to build the ARM64 image & push it to GitHub Packages:
+        ```cmd
+        .\deployment\deploy.bat
+        ```
+        *This ensures the image exists on GitHub before you try to pull it on the Pi.*
 
 ## Step 2: Configure the Pi (Receiver)
 
