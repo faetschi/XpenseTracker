@@ -47,7 +47,70 @@ Your PC is likely Intel/AMD (x86 architecture), while the Pi Zero 2 W is ARM64. 
 
 ## Step 2: Configure the Pi (Receiver)
 
-You need to tell the Pi to download the image from GitHub Packages (GHCR) instead of building it locally.
+### 🚀 Performance Optimization (Highly Recommended)
+The Pi Zero 2 W has only 512MB RAM.  First, create a "health" alias, to monitor the Pi:
+
+    ```bash
+    # Open the File
+    nano ~/.bashrc
+
+    # Paste this alias at the end -> Save & Exit
+    alias health='echo "========================================"
+    echo "🔥 CPU Temp: $(vcgencmd measure_temp)"
+    echo "⚡ Throttled: $(vcgencmd get_throttled)"
+    echo "----------------------------------------"
+    echo "💾 Memory & Swap:"
+    free -h | grep -E "Mem|Swap"
+    echo ""
+    echo "📦 ZRAM Details:"
+    zramctl
+    echo "----------------------------------------"
+    echo "💿 Disk Usage:"
+    df -h | grep "/$"
+    echo "----------------------------------------"
+    echo "🐳 Docker Containers:"
+    docker ps --format "table {{.Names}}\t{{.Status}}"
+    echo "========================================"'
+
+    # Then update
+    source ~/.bashrc
+    ```
+
+To prevent slowness and crashes, further perform these steps:
+
+1.  **Enable Memory Limits:**
+    Enable cgroup memory support so Docker can enforce the `350M` limit:
+    *   Run `sudo nano /boot/cmdline.txt` (or `/boot/firmware/cmdline.txt`).
+    *   Add `cgroup_enable=cpuset cgroup_enable=memory cgroup_memory=1` to the end of the line.
+    *   Save and run `sudo reboot`.
+
+2.  **Increase Swap Space:**
+    Standard 100MB swap is not enough. Increase it to 512MB:
+    ```bash
+    sudo apt install dphys-swapfile -y
+    sudo nano /etc/dphys-swapfile
+    # Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=512
+    sudo /etc/init.d/dphys-swapfile restart
+    ```
+
+    Then verify, if it worked:
+    ```bash
+    free -h
+    zramctl
+    ```
+
+3.  **Enable ZRAM (Optional but Recommended):**
+    ZRAM creates a compressed swap partition in RAM, which is much faster than the SD card:
+    ```bash
+    sudo apt install zram-tools -y
+    ```
+
+    Note: this might lead to conflicts: delete unused dependencies, if they occur:
+    sudo apt remove systemd-zram-generator -y
+    sudo apt autoremove -y
+
+### 🛠️ Deployment Steps
+Now on the Pi, download the image from GitHub Packages (GHCR) instead of building it locally.
 
 1.  **SSH into your Pi:**
     ```bash
@@ -75,7 +138,7 @@ You need to tell the Pi to download the image from GitHub Packages (GHCR) instea
     wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/.env.example -O .env
     nano .env
     ```
-    *Fill in API Keys & Configuration. Save with `Ctrl+O`, Exit with `Ctrl+X`.*
+    *Fill in API Keys & Configuration. **Important:** Set `ADMIN_USERNAME`, `ADMIN_PASSWORD`, and a random `AUTH_SECRET` to protect your app. Save with `Ctrl+O`, Exit with `Ctrl+X`.*
 
 5.  **Create/Update `docker-compose.yml`:**
     ```bash
@@ -90,47 +153,55 @@ You need to tell the Pi to download the image from GitHub Packages (GHCR) instea
             image: ghcr.io/faetschi/xpensetracker:latest
             container_name: xpensetracker
             restart: always
+
+            # 2. Access the app from network
+            ports:
+                - "8501:8501"
             
-            # 2. Load Secrets from the .env file on the Pi
+            # 3. Load Secrets from the .env file on the Pi
             env_file:
                 - .env
             
-            # 3. Environment Overrides (Specific to Pi)
+            # 4. Environment Overrides (Specific to Pi)
             environment:
                 - DB_TYPE=sqlite
             
-            # 4. Persistence: Maps the Pi's folder to the container
+            # 5. Persistence: Maps the Pi's folder to the container
             volumes:
                 - ./data:/app/data
             
-            # 5. Safety Limits for Pi Zero 2 W
+            # 6. Safety Limits for Pi Zero 2 W
             deploy:
                 resources:
                     limits:
                         memory: 350M  # Leaves ~100MB for OS + Watchtower
 
-            # 6. Log Rotation (Prevents SD card filling up)
+            # 7. Log Rotation (Prevents SD card filling up)
             logging:
                 driver: "json-file"
                 options:
                     max-size: "10m" # ensures logs never take up more than 30MB
                     max-file: "3"
             
-            # 7. Tag for Watchtower to update this specific container
+            # 8. Tag for Watchtower to update this specific container
             labels:
                 - "com.centurylinklabs.watchtower.enable=true"
 
         watchtower:
-            image: containrrr/watchtower
+            image: nickfedor/watchtower:arm64v8-dev
             container_name: watchtower
             restart: always
+            environment:
+              - WATCHTOWER_CLEANUP=true
+              - WATCHTOWER_LABEL_ENABLE=true
+              - WATCHTOWER_POLL_INTERVAL=300
             volumes:
                 - /var/run/docker.sock:/var/run/docker.sock
             # Checks every 5 mins (300s), removes old images (cleanup), only updates labeled apps
             command: --interval 300 --cleanup --label-enable
     ```
 
-6.  **Start the Services:**
+6.  **Start the Services (inside ./xpense-tracker ):**
     ```bash
     docker compose up -d
     ```

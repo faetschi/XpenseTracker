@@ -1,4 +1,4 @@
-from nicegui import ui
+from nicegui import ui, app
 from app.core.config import settings
 
 
@@ -45,6 +45,14 @@ def theme(current_page: str = None):
         ui.label('Navigation').classes('text-sm font-semibold text-gray-600 mb-2 dark:text-gray-200')
         for label, href, icon, key in links:
             nav_link(label, href, icon, active=(current_page == key), on_click=lambda _, d=drawer: d.toggle(), extra_classes='w-full')
+        
+        ui.separator().classes('my-4')
+        
+        def logout():
+            app.storage.user['authenticated'] = False
+            ui.navigate.to('/login')
+            
+        nav_link('Logout', '/login', 'logout', active=False, on_click=logout, extra_classes='w-full text-red-600 hover:bg-red-50 dark:hover:bg-red-900')
 
     # Header
     with ui.header().classes(
@@ -62,6 +70,8 @@ def theme(current_page: str = None):
         with ui.row().classes('desktop-nav items-center gap-2'):
             for label, href, icon, key in links:
                 nav_link(label, href, icon, active=(current_page == key))
+            
+            ui.button(icon='logout', on_click=logout).props('flat round color=red').classes('ml-2')
 
         # Mobile menu button
         ui.space().classes('flex-1 mobile-nav-button')

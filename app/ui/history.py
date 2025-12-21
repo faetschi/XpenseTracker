@@ -130,7 +130,7 @@ def history_page():
             ],
             'rowData': rows,
             'pagination': True,
-            'paginationPageSize': 100,
+            'paginationPageSize': 25,
             'domLayout': 'autoHeight',
         }, html_columns=[6]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
         

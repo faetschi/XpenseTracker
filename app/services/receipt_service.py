@@ -56,8 +56,9 @@ class ReceiptService:
         """
         Handles the full receipt processing pipeline:
         1. Saves the file with a unique name.
-        2. Converts HEIC to JPG if necessary.
-        3. Scans the image using the configured AI provider.
+        2. Resizes image to save RAM/Disk (max 1600px).
+        3. Converts HEIC to JPG if necessary.
+        4. Scans the image using the configured AI provider.
         
         Args:
             file_obj: The file-like object (bytes, BytesIO, or similar) containing the image data.
@@ -70,8 +71,8 @@ class ReceiptService:
             # Ensure uploads dir exists
             os.makedirs(ReceiptService.UPLOAD_DIR, exist_ok=True)
             
-            # Cleanup old files
-            ReceiptService.cleanup_old_uploads()
+            # Cleanup old files in background to not block the request
+            asyncio.create_task(asyncio.to_thread(ReceiptService.cleanup_old_uploads))
             
             # Generate unique filename
             timestamp = int(datetime.now().timestamp())
@@ -86,18 +87,27 @@ class ReceiptService:
             logger.info(f"Saving receipt to {file_path} (original: {original_filename})")
             
             # Write content to disk
-            # Handle async read if necessary, though usually passed as BytesIO here
             content = file_obj
             if hasattr(file_obj, 'read'):
                 if hasattr(file_obj, 'seek'):
                     file_obj.seek(0)
                 content = file_obj.read()
-                # If read() returned a coroutine (should be handled by caller, but safety check)
                 if hasattr(content, '__await__'):
                     content = await content
 
             with open(file_path, "wb") as f:
                 f.write(content)
+
+            # Resize image to save RAM during processing (Max 1600px)
+            try:
+                img = Image.open(file_path)
+                max_size = 1600
+                if img.width > max_size or img.height > max_size:
+                    logger.info(f"Resizing image from {img.size} to max {max_size}px...")
+                    img.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
+                    img.save(file_path, quality=85, optimize=True)
+            except Exception as resize_err:
+                logger.warning(f"Image resizing failed: {resize_err}")
             
             # Handle HEIC conversion
             if filename.lower().endswith(('.heic', '.heif')):

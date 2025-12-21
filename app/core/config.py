@@ -18,6 +18,11 @@ class Settings(BaseSettings):
     GOOGLE_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
 
+    # Auth Settings
+    ADMIN_USERNAME: str = "admin"
+    ADMIN_PASSWORD: str = "admin"
+    AUTH_SECRET: str = "change-this-secret-in-production"
+
     # App Constants
     EXPENSE_CATEGORIES: list[str] = [
         "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten", "Miete",
