@@ -1,7 +1,21 @@
 # .dockerignore
 .env
+.venv
+venv
 __pycache__
-venv/
 .git
-data
+.github
 backups
+app/data
+data
+deployment
+docs
+tests
+*.db
+*.sql
+*.log
+*.bat
+*.sh
+README.md
+Dockerfile
+docker-compose.yaml

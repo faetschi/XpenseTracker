@@ -3,6 +3,14 @@
 This guide documents the workflow for deploying **XpenseTracker** to a Raspberry Pi Zero 2 W using Docker Buildx (Cross-compilation) and Watchtower (Auto-updates).
 
 
+## **TL;DR** - Daily Deployment Workflow
+
+Whenever you update your code, simply `build and push` from PC via [`deploy.bat`](deploy.bat) (Windows). The Raspberry Pi will automatically fetch the latest image via Watchtower.
+
+```bash
+.\deployment\deploy.bat
+```
+
 ## Step 1: First Setup on your PC (Do this once)
 
 Your PC is likely Intel/AMD (x86 architecture), while the Pi Zero 2 W is ARM64. If you just run `docker build` on your PC, the image will not run on the Pi. You must use **Docker Buildx** to cross-compile.
@@ -206,14 +214,18 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
     docker compose up -d
     ```
 
-    *Note: The containers are configured with `restart: always`, so they will automatically start whenever the Pi reboots. To ensure Docker itself starts on boot, run:*
+    *Note: The containers are configured with `restart: always`, so they will automatically start whenever the Pi reboots. To ensure Docker itself starts on boot **automatically**, run:*
     ```bash
     sudo systemctl enable docker
     ```
 
 7.  **Setup Weekly Backups (Optional):**
-    To automatically backup your data every Sunday at 03:00 AM:
+    To **automatically** backup your data every Sunday at 03:00 AM:
     ```bash
+    # Create the folder and download the script
+    mkdir -p deployment
+    wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/backup.sh -O deployment/backup.sh
+
     # Make the script executable
     chmod +x deployment/backup.sh
     
@@ -227,22 +239,8 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
 
 ## Step 3: Daily Deployment Workflow
 
-Whenever you update your code, simply `build and push` from PC via one of the following two options. The Raspberry Pi will automatically fetch the latest image via Watchtower.
+See the [`TL;DR - Daily Deployment Workflow`](#tldr---daily-deployment-workflow) at the top of this guide for the quick command.
 
-### *Option A: The "One-Click" Script (Recommended)*
-Use the file named `deployment/deploy.bat` (Windows) so you don't have to type the build command every time.
-
-### *Option B: Manual Command*
-Run this in the project terminal on your PC:
-
-```bash
-# syntax: docker buildx build --platform [TARGET_ARCH] -t ghcr.io/[GITHUB_USER]/[IMAGE_NAME]:latest --push .
-
-docker buildx build --platform linux/arm64 -t ghcr.io/faetschi/xpensetracker:latest --push .
-```
-
-* `--platform linux/arm64`: Tells Docker to build specifically for the Raspberry Pi's chip.
-* `--push`: Automatically uploads the result to GitHub Packages.
 
 ## 🔄 Migrating Existing Data (Postgres to SQLite)
 If you have been using the app with PostgreSQL on your PC and want to move your data to the Pi (SQLite):
@@ -270,7 +268,7 @@ If you have been using the app with PostgreSQL on your PC and want to move your 
 ## Troubleshooting
 
 * **Missing Secrets?** 
-    If the bot fails to start, check if you created the .env file on the Pi (cat .env).
+    If the app fails to start, check if you created the .env file on the Pi (cat .env).
 * **Update not happening?**
     Watchtower checks every 5 minutes (`--interval 300`). Wait at least 5 minutes after pushing.
 * **Pi Crashing?**
