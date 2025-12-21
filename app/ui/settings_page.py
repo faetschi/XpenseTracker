@@ -1,5 +1,5 @@
 from nicegui import ui
-from app.core.config import settings
+from app.core.config import settings, USER_SETTINGS_PATH
 from app.ui.layout import theme
 import json
 import os
@@ -198,7 +198,7 @@ def settings_page():
                     "UPLOAD_RETENTION_MINUTES": settings.UPLOAD_RETENTION_MINUTES
                 }
                 
-                with open("app/user_settings.json", "w") as f:
+                with open(USER_SETTINGS_PATH, "w") as f:
                     json.dump(user_settings, f, indent=4)
                 
                 ui.notify('Settings saved successfully!', type='positive')

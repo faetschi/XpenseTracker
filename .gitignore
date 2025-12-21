@@ -3,6 +3,7 @@
 uploads/*.e
 venv/
 app/user_settings.json
+app/data/
 uploads/*
 backups/
 quick_start.bat

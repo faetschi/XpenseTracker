@@ -6,12 +6,15 @@ from app.ui.history import history_page
 from app.ui.settings_page import settings_page
 import os
 
+# Ensure data directory exists for SQLite and settings
+os.makedirs('app/data', exist_ok=True)
+
 # Initialize DB tables
 Base.metadata.create_all(bind=engine)
 
 # Serve uploads directory
-os.makedirs('uploads', exist_ok=True)
-app.add_static_files('/uploads', 'uploads')
+os.makedirs('app/data/uploads', exist_ok=True)
+app.add_static_files('/uploads', 'app/data/uploads')
 app.add_static_files('/ui/static', 'app/ui/static')
 
 @ui.page('/')

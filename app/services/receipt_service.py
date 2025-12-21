@@ -14,7 +14,7 @@ pillow_heif.register_heif_opener()
 logger = get_logger(__name__)
 
 class ReceiptService:
-    UPLOAD_DIR = "uploads"
+    UPLOAD_DIR = "app/data/uploads"
 
     @staticmethod
     def cleanup_old_uploads():

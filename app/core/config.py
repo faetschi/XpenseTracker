@@ -1,11 +1,17 @@
 from pydantic_settings import BaseSettings, SettingsConfigDict
+from typing import Optional
 
 class Settings(BaseSettings):
-    POSTGRES_USER: str
-    POSTGRES_PASSWORD: str
-    POSTGRES_DB: str
-    POSTGRES_HOST: str
-    POSTGRES_PORT: int
+    # Database Selection
+    DB_TYPE: str = "postgres" # postgres, sqlite
+    SQLITE_FILE: str = "xpensetracker.db"
+
+    # Postgres Settings
+    POSTGRES_USER: str = "postgres"
+    POSTGRES_PASSWORD: str = "postgres"
+    POSTGRES_DB: str = "xpense"
+    POSTGRES_HOST: str = "localhost"
+    POSTGRES_PORT: int = 5432
     
     # AI Settings
     AI_PROVIDER: str = "gemini" # Default to gemini
@@ -35,6 +41,9 @@ class Settings(BaseSettings):
 
     @property
     def DATABASE_URL(self) -> str:
+        if self.DB_TYPE == "sqlite":
+            # Store in the app/data directory so it persists with the volume mount in Docker
+            return f"sqlite:///./app/data/{self.SQLITE_FILE}"
         return f"postgresql://{self.POSTGRES_USER}:{self.POSTGRES_PASSWORD}@{self.POSTGRES_HOST}:{self.POSTGRES_PORT}/{self.POSTGRES_DB}"
 
     model_config = SettingsConfigDict(env_file=".env")
@@ -45,7 +54,7 @@ settings = Settings()
 import json
 import os
 
-USER_SETTINGS_PATH = "app/user_settings.json"
+USER_SETTINGS_PATH = "app/data/user_settings.json"
 if os.path.exists(USER_SETTINGS_PATH):
     try:
         with open(USER_SETTINGS_PATH, "r") as f:

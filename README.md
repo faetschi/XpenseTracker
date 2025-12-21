@@ -23,8 +23,18 @@ A self-hosted, Python-based expense and income tracking application with AI rece
 ## Tech Stack
 - **Frontend**: NiceGui
 - **Backend**: Python, FastAPI, SQLAlchemy
-- **Database**: PostgreSQL
+- **Database**: PostgreSQL or SQLite
 - **AI**: Google Gemini API / OpenAI API (& more to come)
+
+## Configuration
+
+You can configure the database type in `.env`:
+
+```env
+DB_TYPE=postgres # or sqlite
+```
+
+If using SQLite, the database file will be stored in `app/data/xpensetracker.db`.
 
 ## Installation Setup
 
@@ -67,3 +77,9 @@ A self-hosted, Python-based expense and income tracking application with AI rece
     ```powershell
     & ".venv/Scripts/python.exe" -m pytest tests/
     ```
+
+## Deployment & Backups
+
+For detailed instructions on how to deploy to a Raspberry Pi or manage backups, see the [deployment/](deployment/) folder:
+- [Raspberry Pi Guide](deployment/RASPBERRY-PI.md)
+- [Production & Backup Guide](deployment/PRODUCTION.md)

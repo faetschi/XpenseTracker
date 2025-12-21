@@ -1,0 +1,7 @@
+# .dockerignore
+.env
+__pycache__
+venv/
+.git
+data
+backups
