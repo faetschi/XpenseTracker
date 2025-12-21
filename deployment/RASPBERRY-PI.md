@@ -135,8 +135,8 @@ You need to tell the Pi to download the image from GitHub Packages (GHCR) instea
     docker compose up -d
     ```
 
-7.  **Setup Monthly Backups (Optional):**
-    To automatically backup your data on the 1st of every month:
+7.  **Setup Weekly Backups (Optional):**
+    To automatically backup your data every Sunday at 03:00 AM:
     ```bash
     # Make the script executable
     chmod +x deployment/backup.sh
@@ -144,9 +144,9 @@ You need to tell the Pi to download the image from GitHub Packages (GHCR) instea
     # Open crontab editor
     crontab -e
     ```
-    Add this line at the bottom (runs at 03:00 AM on the 1st of every month):
+    Add this line at the bottom:
     ```text
-    0 3 1 * * cd ~/xpense-tracker && ./deployment/backup.sh >> backup.log 2>&1
+    0 3 * * 0 cd ~/xpense-tracker && ./deployment/backup.sh >> backup.log 2>&1
     ```
 
 ## Step 3: Daily Deployment Workflow
