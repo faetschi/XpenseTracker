@@ -5,7 +5,7 @@ This guide documents the workflow for deploying **XpenseTracker** to a Raspberry
 
 ## **TL;DR** - Daily Deployment Workflow
 
-Whenever you update your code, simply `build and push` from PC via [`deploy.bat`](deploy.bat) (Windows). The Raspberry Pi will automatically fetch the latest image via Watchtower.
+Whenever you update your code, simply `build and push` from PC with Docker via [`deploy.bat`](deploy.bat) (Windows). The Raspberry Pi will automatically fetch the latest image via Watchtower.
 
 ```bash
 .\deployment\deploy.bat
