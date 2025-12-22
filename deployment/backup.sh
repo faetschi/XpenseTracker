@@ -20,13 +20,40 @@ fi
 
 if [ "$DB_TYPE" == "sqlite" ]; then
     echo "[1/2] Backing up SQLite Database safely..."
-    if [ -f "app/data/xpensetracker.db" ]; then
-        sqlite3 app/data/xpensetracker.db ".backup '$BACKUP_DIR/xpensetracker.db'"
-        echo "    SQLite database backup successful."
-    elif [ -f "data/xpensetracker.db" ]; then
-        # On Pi, the volume might be mapped to ./data
-        sqlite3 data/xpensetracker.db ".backup '$BACKUP_DIR/xpensetracker.db'"
-        echo "    SQLite database backup successful (from ./data)."
+    
+    # Determine DB path
+    DB_PATH=""
+    if [ -f "app/data/xpensetracker.db" ]; then DB_PATH="app/data/xpensetracker.db";
+    elif [ -f "data/xpensetracker.db" ]; then DB_PATH="data/xpensetracker.db"; fi
+
+    if [ -n "$DB_PATH" ]; then
+        # Try python3 first (Linux/Pi), then python (Windows)
+        PYTHON_CMD="python3"
+        if ! command -v python3 &> /dev/null; then
+            PYTHON_CMD="python"
+        fi
+
+        $PYTHON_CMD -c "
+import sqlite3, os
+try:
+    # Use URI mode to open source as read-only to avoid lock issues
+    source = sqlite3.connect(f'file:{os.path.abspath(\"$DB_PATH\")}?mode=ro', uri=True)
+    dest = sqlite3.connect('$BACKUP_DIR/xpensetracker.db')
+    with dest:
+        source.backup(dest)
+    dest.close()
+    source.close()
+except Exception as e:
+    print(f'PYTHON_ERROR: {e}')
+    exit(1)
+"
+        if [ $? -eq 0 ]; then
+            echo "    SQLite database backup successful."
+        else
+            echo "    ERROR: SQLite database backup failed!"
+            rm -rf "$BACKUP_DIR"
+            exit 1
+        fi
     else
         echo "    WARNING: SQLite database file not found."
     fi

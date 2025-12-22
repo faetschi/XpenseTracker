@@ -95,10 +95,25 @@ To prevent slowness and crashes, further perform these steps:
 2.  **Increase Swap Space:**
     Standard 100MB swap is not enough. Increase it to 512MB:
     ```bash
+    # 1.
     sudo apt install dphys-swapfile -y
     sudo nano /etc/dphys-swapfile
-    # Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=512
+        # Change CONF_SWAPSIZE=100 to CONF_SWAPSIZE=512
     sudo /etc/init.d/dphys-swapfile restart
+
+    # 2.
+    sudo nano /etc/default/zramswap
+        ## Change these settings
+        # Compression algorithm
+        ALGO=zstd
+
+        # Use 100% of RAM size for the ZRAM disk (don't worry, it's virtual)
+        PERCENT=100
+
+        # Priority (ensure it's higher than the swap file)
+        PRIORITY=100
+
+    sudo systemctl restart zramswap
     ```
 
     Then verify, if it worked:
@@ -205,6 +220,7 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
               - WATCHTOWER_POLL_INTERVAL=300
             volumes:
                 - /var/run/docker.sock:/var/run/docker.sock
+                - /home/faetschi/.docker/config.json:/config.json:ro
             # Checks every 5 mins (300s), removes old images (cleanup), only updates labeled apps
             command: --interval 300 --cleanup --label-enable
     ```
