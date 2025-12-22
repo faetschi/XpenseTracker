@@ -249,7 +249,6 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
     # Create the folder and download the script
     mkdir -p deployment
     wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/backup.sh -O deployment/backup.sh
-    wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/restore.sh -O deployment/restore.sh
     # Make the script executable
     chmod +x deployment/backup.sh
     
@@ -259,6 +258,19 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
     Add this line at the bottom:
     ```text
     0 3 * * 0 cd ~/xpense-tracker && ./deployment/backup.sh >> backup.log 2>&1
+    ```
+
+8. **Restore Latest Backup (Optional):**
+    If you ever need to revert to your latest backup:
+    ```bash
+    # Download the restore script
+    wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/restore.sh -O deployment/restore.sh
+    
+    # Make it executable
+    chmod +x deployment/restore.sh
+    
+    # Run it
+    ./deployment/restore.sh
     ```
 
 ## Step 3: Daily Deployment Workflow
