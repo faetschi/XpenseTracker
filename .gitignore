@@ -7,3 +7,4 @@ app/data/
 uploads/*
 backups/
 quick_start.bat
+scp

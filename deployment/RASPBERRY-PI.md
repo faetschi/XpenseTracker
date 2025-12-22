@@ -75,9 +75,6 @@ The Pi Zero 2 W has only 512MB RAM.  First, create a "health" alias, to monitor 
     echo "----------------------------------------"
     echo "💿 Disk Usage:"
     df -h | grep "/$"
-    echo "----------------------------------------"
-    echo "🐳 Docker Containers:"
-    docker ps --format "table {{.Names}}\t{{.Status}}"
     echo "========================================"'
 
     # Then update
@@ -191,7 +188,7 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
             
             # 5. Persistence: Maps the Pi's folder to the container
             volumes:
-                - ./data:/app/data
+                - ./data:/app/app/data
             
             # 6. Safety Limits for Pi Zero 2 W
             deploy:
@@ -215,14 +212,25 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
             container_name: watchtower
             restart: always
             environment:
-              - WATCHTOWER_CLEANUP=true
-              - WATCHTOWER_LABEL_ENABLE=true
-              - WATCHTOWER_POLL_INTERVAL=300
+                - WATCHTOWER_CLEANUP=true
+                - WATCHTOWER_LABEL_ENABLE=true
+                - WATCHTOWER_POLL_INTERVAL=300
+                - TZ=Europe/Berlin
+                # Notifications Setup
+                - WATCHTOWER_NOTIFICATIONS=shoutrrr
+                - WATCHTOWER_NOTIFICATION_URL=discord://{WEBHOOK_TOKEN}@{WEBHOOK_ID} # Change this to your Discord Webhook
+                - WATCHTOWER_NOTIFICATION_REPORT=true
+                - WATCHTOWER_NO_STARTUP_MESSAGE=true
+                - WATCHTOWER_NOTIFICATION_TEMPLATE={{range .}}{{.Message}}{{println}}{{end}}
+                - WATCHTOWER_NOTIFICATIONS_LEVEL=info
+                # Use environment variables for GHCR authentication
+                # - REPO_USER=GITHUB_USERNAME # Change this
+                # - REPO_PASS=GITHUB_PAT # Change this
             volumes:
                 - /var/run/docker.sock:/var/run/docker.sock
-                - /home/faetschi/.docker/config.json:/config.json:ro
-            # Checks every 5 mins (300s), removes old images (cleanup), only updates labeled apps
-            command: --interval 300 --cleanup --label-enable
+                - /home/faetschi/.docker/config.json:/config.json
+            # Checks every 30 mins (1800s), removes old images (cleanup), only updates labeled apps
+            command: --interval 1800 --cleanup --label-enable
     ```
 
 6.  **Start the Services (inside ./xpense-tracker ):**
@@ -241,7 +249,7 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
     # Create the folder and download the script
     mkdir -p deployment
     wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/backup.sh -O deployment/backup.sh
-
+    wget https://raw.githubusercontent.com/faetschi/XpenseTracker/master/deployment/restore.sh -O deployment/restore.sh
     # Make the script executable
     chmod +x deployment/backup.sh
     
@@ -258,36 +266,47 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
 See the [`TL;DR - Daily Deployment Workflow`](#tldr---daily-deployment-workflow) at the top of this guide for the quick command.
 
 
-## 🔄 Migrating Existing Data (Postgres to SQLite)
+## 🔄 Migrating Existing Data (Postgres/SQLite to Pi)
 If you have been using the app with PostgreSQL on your PC and want to move your data to the Pi (SQLite):
 
 1.  **On your PC**, run the backup script to get a SQL dump:
     ```cmd
     .\deployment\backup.bat
     ```
+
 2.  **Run the migration script** on your PC:
     ```cmd
     python .\deployment\migrate_to_sqlite.py
     ```
     Point it to the `.sql` file in your `backups/` folder. This will create `app/data/xpensetracker.db`.
+
 3.  **Copy the data to the Pi**:
     Run this command from your PC terminal (replace `pi@dockerpi.local` with your Pi's address):
     ```bash
-    # Copy the database and settings
-    scp app/data/xpensetracker.db app/data/user_settings.json pi@dockerpi.local:~/xpense-tracker/data/
+    # Navigate to project root & copy database and settings (change username@hostname)
+    scp app/data/xpensetracker.db app/data/user_settings.json faetschi@raspi-one.local:~/xpense-tracker/data/
     ```
+
 4.  **Restart the container** on the Pi:
     ```bash
-    docker compose up -d
+    docker compose restart xpensetracker
     ```
 
 ## Troubleshooting
 
 * **Missing Secrets?** 
     If the app fails to start, check if you created the .env file on the Pi (cat .env).
+* **Missing Data?** 
+    Make sure to migrate existing PostgreSQL / SQLite data by copying it onto the Pi before starting the application.
 * **Update not happening?**
     Watchtower checks every 5 minutes (`--interval 300`). Wait at least 5 minutes after pushing.
 * **Pi Crashing?**
     Check RAM usage. Ensure `limits: memory: 350M` is set in the compose file and that ZRAM is enabled on the Pi OS.
 * **Storage Full?**
     Check if `logging` is configured in `docker-compose.yml` to prevent log files from growing infinitely.
+
+### Documentation
+
+https://containrrr.dev/watchtower/private-registries/#share_the_docker_configuration_file
+
+https://watchtower.nickfedor.com/v1.13.0/configuration/arguments/#registry_authentication
