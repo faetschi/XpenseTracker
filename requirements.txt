@@ -2,7 +2,7 @@ sqlalchemy
 psycopg2-binary
 pydantic
 pydantic-settings
-google-generativeai
+google-genai
 openai
 python-dotenv
 pillow
