@@ -137,26 +137,21 @@ def dashboard_page():
                     with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
                         ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
                         if expenses:
-                            columns = [
-                                {'name': 'date', 'label': 'Date', 'field': 'date', 'align': 'left'},
-                                {'name': 'category', 'label': 'Category', 'field': 'category', 'align': 'left'},
-                                {'name': 'amount', 'label': 'Amount', 'field': 'amount', 'align': 'right'},
-                            ]
-                            rows = [
-                                {
-                                    'date': e.date.strftime('%d.%m.%Y'),
-                                    'category': e.category,
-                                    'amount': format_currency(e.amount_eur),
-                                    'type': getattr(e, 'type', 'expense') # Fallback if not loaded yet
-                                } for e in expenses
-                            ]
-                            with ui.element('div').classes('w-full overflow-x-auto'):
-                                table = ui.table(columns=columns, rows=rows, pagination=None).classes('w-full min-w-[320px]')
-                            table.add_slot('body-cell-amount', '''
-                                <q-td :props="props" :class="props.row.type === 'income' ? 'text-green-600 font-bold' : 'text-red-600'">
-                                    {{ props.row.type === 'income' ? '+' : '-' }} {{ props.value }}
-                                </q-td>
-                            ''')
+                            # Mobile-friendly card layout for recent transactions
+                            with ui.column().classes('w-full gap-3'):
+                                for expense in expenses[:5]:  # Limit to 5 most recent
+                                    with ui.card().classes('w-full p-3 shadow-sm border border-gray-200 hover:shadow-md transition-shadow'):
+                                        with ui.row().classes('w-full items-center justify-between flex-wrap gap-2'):
+                                            # Date and Category
+                                            with ui.column().classes('flex-1 min-w-0'):
+                                                ui.label(expense.date.strftime('%d.%m.%Y')).classes('text-sm text-gray-600 font-medium')
+                                                ui.label(expense.category).classes('text-sm text-gray-800 truncate')
+                                            
+                                            # Amount
+                                            amount_class = 'text-green-600 font-bold' if getattr(expense, 'type', 'expense') == 'income' else 'text-red-600'
+                                            ui.label(
+                                                f"{'+' if getattr(expense, 'type', 'expense') == 'income' else '-'}{format_currency(expense.amount_eur)}"
+                                            ).classes(f'text-lg font-semibold {amount_class} whitespace-nowrap')
                         else:
                             ui.label('No transactions yet.').classes('text-gray-400 italic')
 

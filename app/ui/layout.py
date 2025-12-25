@@ -30,6 +30,18 @@ def theme(current_page: str = None):
         dark.auto()
     
     ui.add_head_html('<link rel="stylesheet" href="/ui/static/styles.css">')
+    ui.add_head_html('''
+        <style>
+            @media (min-width: 785px) {
+                .mobile-nav-button { display: none !important; }
+                .desktop-nav { display: flex !important; }
+            }
+            @media (max-width: 784px) {
+                .desktop-nav { display: none !important; }
+                .mobile-nav-button { display: flex !important; }
+            }
+        </style>
+    ''')
 
     links = [
         ('Dashboard', '/', 'dashboard', 'dashboard'),

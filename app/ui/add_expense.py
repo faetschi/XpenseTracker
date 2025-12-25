@@ -168,29 +168,32 @@ def add_expense_page():
                             
                             # Create UI Card for this receipt
                             with receipts_container:
-                                with ui.card().classes('w-full p-4 shadow-sm border border-gray-200 relative') as card:
+                                with ui.card().classes('w-full p-4 shadow-sm border border-gray-200 relative receipt-card') as card:
                                     entry = {'card': card}
                                     
                                     # Close Button
                                     ui.button(icon='close', on_click=lambda: remove_receipt(entry)) \
                                         .props('flat round dense color=red').classes('absolute top-2 right-2 z-10')
                                     
-                                    with ui.row().classes('w-full gap-4 no-wrap items-start'):
+                                    with ui.row().classes('w-full gap-4 flex-col sm:flex-row items-start'):
                                         # Image Preview
-                                        web_path = f"/{file_path.replace(os.sep, '/')}"
-                                        ui.image(web_path).classes('w-32 h-32 object-cover rounded cursor-pointer') \
-                                            .on('click', lambda src=web_path: show_full_image(src))
+                                        with ui.column().classes('w-full sm:w-auto flex-shrink-0'):
+                                            web_path = f"/{file_path.replace(os.sep, '/')}"
+                                            ui.image(web_path).classes('w-full sm:w-32 h-32 object-cover rounded cursor-pointer mx-auto sm:mx-0') \
+                                                .on('click', lambda src=web_path: show_full_image(src))
                                         
                                         # Form Fields
-                                        with ui.column().classes('flex-grow gap-2'):
-                                            with ui.grid(columns=2).classes('w-full gap-2'):
-                                                date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date')
+                                        with ui.column().classes('flex-grow gap-2 w-full'):
+                                            # Mobile: Stack fields vertically, Desktop: Use grid
+                                            with ui.grid(columns='1').classes('w-full gap-2 sm:grid-cols-2'):
+                                                date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date').classes('w-full')
                                                 cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=result.category).classes('w-full')
-                                                desc_input = ui.input(label="Description", value=result.description).classes('col-span-2 w-full')
-                                                amount_input = ui.input(label="Amount", value=f"{float(result.amount):.2f}").classes('w-full') \
-                                                    .on('input', sanitize_amount) \
-                                                    .on('blur', format_on_blur)
-                                                curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=result.currency).classes('w-full')
+                                                desc_input = ui.input(label="Description", value=result.description).classes('w-full sm:col-span-2')
+                                                with ui.row().classes('w-full gap-2 sm:col-span-2'):
+                                                    amount_input = ui.input(label="Amount", value=f"{float(result.amount):.2f}").classes('flex-1') \
+                                                        .on('input', sanitize_amount) \
+                                                        .on('blur', format_on_blur)
+                                                    curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=result.currency).classes('w-24')
                                     
                                     entry['inputs'] = {
                                         'date': date_input,
@@ -232,7 +235,7 @@ def add_expense_page():
                         .props('spread toggle-color=red') \
                         .classes('w-full mb-4')
                     
-                    with ui.grid(columns=2).classes('w-full gap-4'):
+                    with ui.grid(columns=1).classes('w-full gap-4 sm:grid-cols-2'):
                         # Date Picker
                         with ui.input('Date', value=date.today().strftime('%d.%m.%Y')) as date_field:
                             with date_field.add_slot('prepend'):
@@ -257,7 +260,7 @@ def add_expense_page():
                         
                         type_toggle.on_value_change(update_categories)
                         
-                        desc_input = ui.input(label="Description").classes('col-span-2 w-full')
+                        desc_input = ui.input(label="Description").classes('sm:col-span-2 w-full')
                         
                         amount_input = ui.input(label="Amount", placeholder="0.00").classes('w-full') \
                             .on('input', sanitize_amount) \

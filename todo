@@ -4,7 +4,8 @@
 
 - [x] in settings page, openai and gemini api key should be hidden from UI if AI provider: "testing" is selected. the according API key settings should only show if the appropriate provider is selected, e.g. "openai" provider then the OpenAI API key setting should show, vise-versa if "gemini" selected then show google gemini api key setting
 
-- [ ] make history page, upload Receipt form (after uploading an AI Upload receipt) and Recent Transactions (on dashboard) more mobile friendly on smaller viewports (show only most important parts on mobile)
+- [x] make history page, upload Receipt form (after uploading an AI Upload receipt) and Recent Transactions (on dashboard) more mobile friendly on smaller viewports (show only most important parts on mobile)
+- [x] adjust history page to switch between table view (desktop >= 785px) and card view (mobile < 785px) correctly
 
 - [ ] in add expense: when opening the category drop down (or any dropdown), the drop down shouldnt go up blocking a lot, it should go conventionally down
 
@@ -12,7 +13,7 @@
 
 - [ ] on the dashboard screen, change place of "Legend" in Piechart or the 2 buttons "download plot as png" and "procude by plot.ly", because currently they are on top of each other. Maybe move the 2 buttons from plot.ly to the bottom of the piechart (info: this only happens when mouse hovers over piechart)
 
-- [ ] adjust header of all pages to be responsible for different viewports (e.g. phone). Also do this for the History Page's table (on phone should still be usable)
+- [x] adjust header of all pages to be responsible for different viewports (e.g. phone). Also do this for the History Page's table (on phone should still be usable)
 
 - [ ] in transaction history, give each transaction an ongoing id, so that i can find out the total done transactions and see if theres any missed/lost transaction over the history
 

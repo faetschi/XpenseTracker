@@ -20,4 +20,4 @@ EXPOSE 8501
 
 HEALTHCHECK CMD curl --fail http://localhost:8501/ || exit 1
 
-ENTRYPOINT ["python", "app/main.py"]
+ENTRYPOINT ["python", "app/main.py", "--reload"]

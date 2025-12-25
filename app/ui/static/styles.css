@@ -1,6 +1,6 @@
 .q-page-container { padding-top: 32px !important; }
 
-/* Filter toolbar stays row until 767px */
+/* Filter toolbar stays row until 785px */
 .filter-toolbar {
     flex-direction: row !important;
     flex-wrap: nowrap !important;
@@ -11,7 +11,7 @@
     max-width: 220px;
     min-width: 220px;
 }
-@media (max-width: 767px) {
+@media (max-width: 784px) {
     .filter-toolbar {
         flex-direction: column !important;
         flex-wrap: wrap !important;
@@ -51,18 +51,39 @@
     }
 }
 
-/* Nav visibility toggles at 695px */
+/* Nav visibility toggles are now handled via injected styles in layout.py for maximum reliability */
 .desktop-nav {
     display: flex;
 }
 .mobile-nav-button {
     display: none;
 }
-@media (max-width: 695px) {
-    .desktop-nav {
-        display: none !important;
+
+/* Mobile responsive receipt cards */
+@media (max-width: 640px) {
+    .receipt-card .q-card__section {
+        padding: 12px !important;
     }
-    .mobile-nav-button {
-        display: flex !important;
+    
+    .receipt-card .q-img {
+        width: 80px !important;
+        height: 80px !important;
+        margin: 0 auto 12px auto !important;
+    }
+}
+
+/* History page responsive views */
+/* Handled via injected styles in history.py for maximum reliability */
+
+/* Ensure history page containers don't overflow */
+.history-container {
+    overflow-x: hidden !important;
+}
+
+/* Mobile card improvements */
+@media (max-width: 480px) {
+    .history-cards-container .q-card {
+        margin: 0 -4px 4px -4px !important;
+        border-radius: 12px !important;
     }
 }
