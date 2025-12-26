@@ -1,6 +1,9 @@
 from nicegui import ui, app
 from app.core.config import settings
 
+# Central breakpoint used across the UI (in pixels)
+BREAKPOINT = 785
+
 
 def nav_link(label: str, link: str, icon: str, active: bool = False, on_click=None, extra_classes: str = ''):
     """Helper to create consistent navigation links in the header (desktop + drawer)."""
@@ -30,18 +33,47 @@ def theme(current_page: str = None):
         dark.auto()
     
     ui.add_head_html('<link rel="stylesheet" href="/ui/static/styles.css">')
-    ui.add_head_html('''
+    css = '''
         <style>
-            @media (min-width: 785px) {
-                .mobile-nav-button { display: none !important; }
-                .desktop-nav { display: flex !important; }
-            }
-            @media (max-width: 784px) {
-                .desktop-nav { display: none !important; }
-                .mobile-nav-button { display: flex !important; }
-            }
+            /* Default: hide desktop elements */
+            .desktop-only, .desktop-layout {{ display: none !important; }}
+
+            @media (min-width: {bp}px) {{
+                .mobile-only, .mobile-layout {{ display: none !important; }}
+                /* Show desktop elements */
+                .desktop-only, .desktop-layout {{ display: block !important; }}
+                .desktop-only.column, .desktop-layout.column {{ display: flex !important; }}
+                .desktop-only.row, .desktop-layout.row {{ display: flex !important; }}
+
+                /* Responsive row: row on desktop, column on mobile */
+                .responsive-row {{ flex-direction: row !important; }}
+
+                /* Responsive grid: 2 columns on desktop, 1 on mobile */
+                .responsive-grid-2 {{
+                    display: grid !important;
+                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
+                }}
+            }}
+
+            @media (max-width: {bp_minus}px) {{
+                .desktop-only, .desktop-layout {{ display: none !important; }}
+                /* Ensure mobile elements are shown */
+                .mobile-only, .mobile-layout {{ display: block !important; }}
+                .mobile-only.column, .mobile-layout.column {{ display: flex !important; }}
+                .mobile-only.row, .mobile-layout.row {{ display: flex !important; }}
+
+                /* Responsive row: row on desktop, column on mobile */
+                .responsive-row {{ flex-direction: column !important; }}
+
+                /* Responsive grid: 2 columns on desktop, 1 on mobile */
+                .responsive-grid-2 {{
+                    display: grid !important;
+                    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
+                }}
+            }}
         </style>
-    ''')
+    '''
+    ui.add_head_html(css.format(bp=BREAKPOINT, bp_minus=BREAKPOINT-1))
 
     links = [
         ('Dashboard', '/', 'dashboard', 'dashboard'),
@@ -51,8 +83,8 @@ def theme(current_page: str = None):
     ]
 
     # Mobile/desktop drawer
-    drawer = ui.left_drawer(value=False, bordered=True, elevated=True) \
-        .classes('bg-white dark:bg-slate-900 w-64 p-3')
+    drawer = ui.left_drawer(value=False) \
+        .classes('bg-white dark:bg-slate-900 w-64 p-3 !shadow-none !border-none')
     with drawer:
         ui.label('Navigation').classes('text-sm font-semibold text-gray-600 mb-2 dark:text-gray-200')
         for label, href, icon, key in links:
@@ -79,16 +111,17 @@ def theme(current_page: str = None):
             ui.label('XpenseTracker').classes('text-xl font-bold text-gray-800 tracking-tight dark:text-white')
 
         # Desktop navigation
-        with ui.row().classes('desktop-nav items-center gap-2'):
+        with ui.row().classes('desktop-only items-center gap-2'):
             for label, href, icon, key in links:
                 nav_link(label, href, icon, active=(current_page == key))
             
-            ui.button(icon='logout', on_click=logout).props('flat round color=red').classes('ml-2')
+            ui.button(icon='logout', on_click=logout).props('flat round color=red aria-label="Logout" title="Logout"').classes('ml-2')
+            ui.tooltip('Logout')
 
         # Mobile menu button
-        ui.space().classes('flex-1 mobile-nav-button')
-        ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round dense color=blue') \
-            .classes('mobile-nav-button')
+        ui.space().classes('flex-1 mobile-only')
+        ui.button(icon='menu', on_click=lambda: drawer.toggle()).props('flat round dense color=blue aria-label="Open navigation" title="Open navigation"') \
+            .classes('mobile-only')
     
     # Page background
     ui.query('body').classes('bg-gray-50 dark:bg-slate-800')

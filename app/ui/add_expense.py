@@ -5,7 +5,7 @@ from app.services.expense_service import ExpenseService
 from app.services.receipt_service import ReceiptService
 from app.db.schemas import ExpenseCreate
 from app.core.config import settings
-from app.ui.layout import theme
+from app.ui.layout import theme, BREAKPOINT
 from app.utils.logger import get_logger
 import io
 import os
@@ -29,6 +29,53 @@ def add_expense_page():
         .receipt-uploader .q-uploader__header {
             padding: 5px !important;
         }
+        
+        /* Ensure receipt preview is centered and behaves consistently */
+        .receipt-card .preview-container {
+            display: flex !important;
+            justify-content: center !important;
+            align-items: center !important;
+            text-align: center !important;
+        }
+        .receipt-card .preview-image,
+        .receipt-card .preview-container img,
+        .receipt-card .preview-container .q-img {
+            display: block !important;
+            margin-left: auto !important;
+            margin-right: auto !important;
+            max-width: 100% !important;
+            width: 180px !important;
+            height: 120px !important;
+            object-fit: contain !important;
+        }
+
+        /* On desktop, stack and center the preview above the form fields (page-scoped) */
+        @media (min-width: {BREAKPOINT}px) {
+            .receipt-card .responsive-row {
+                flex-direction: column !important;
+                align-items: center !important;
+            }
+            .receipt-card .preview-container {
+                width: 100% !important;
+                margin-bottom: 0.5rem !important;
+            }
+            .receipt-card .preview-container img,
+            .receipt-card .preview-image,
+            .receipt-card .preview-container .q-img {
+                display: block !important;
+                width: 100% !important;            
+                max-width: 500px !important;
+                height: auto !important;
+                max-height: 160px !important;
+                object-fit: contain !important;
+            }
+            .receipt-card .responsive-row > .q-column,
+            .receipt-card .responsive-row > .q-row,
+            .receipt-card .responsive-row > .flex-grow {
+                width: 100% !important;
+            }
+        }
+
     ''')
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
@@ -173,19 +220,22 @@ def add_expense_page():
                                     
                                     # Close Button
                                     ui.button(icon='close', on_click=lambda: remove_receipt(entry)) \
-                                        .props('flat round dense color=red').classes('absolute top-2 right-2 z-10')
+                                        .props('flat round dense color=red aria-label="Remove receipt" title="Remove receipt"').classes('absolute top-2 right-2 z-10')
                                     
-                                    with ui.row().classes('w-full gap-4 flex-col sm:flex-row items-start'):
+                                    with ui.row().classes('w-full gap-4 responsive-row items-center sm:items-start'):
                                         # Image Preview
-                                        with ui.column().classes('w-full sm:w-auto flex-shrink-0'):
-                                            web_path = f"/{file_path.replace(os.sep, '/')}"
-                                            ui.image(web_path).classes('w-full sm:w-32 h-32 object-cover rounded cursor-pointer mx-auto sm:mx-0') \
+                                        with ui.element('div').classes('w-full preview-container'):
+                                            # Construct the web path through the helper (serves as single source of truth)
+                                            filename = os.path.basename(file_path)
+                                            web_path = ReceiptService.get_public_url(filename)
+                                            # Use page-scoped classes to control size via CSS
+                                            ui.image(web_path).props('alt="Receipt preview"').classes('preview-image bg-gray-50 rounded cursor-pointer border border-gray-100') \
                                                 .on('click', lambda src=web_path: show_full_image(src))
                                         
                                         # Form Fields
                                         with ui.column().classes('flex-grow gap-2 w-full'):
                                             # Mobile: Stack fields vertically, Desktop: Use grid
-                                            with ui.grid(columns='1').classes('w-full gap-2 sm:grid-cols-2'):
+                                            with ui.grid().classes('w-full gap-2 responsive-grid-2'):
                                                 date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date').classes('w-full')
                                                 cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=result.category).classes('w-full')
                                                 desc_input = ui.input(label="Description", value=result.description).classes('w-full sm:col-span-2')
@@ -235,7 +285,8 @@ def add_expense_page():
                         .props('spread toggle-color=red') \
                         .classes('w-full mb-4')
                     
-                    with ui.grid(columns=1).classes('w-full gap-4 sm:grid-cols-2'):
+                    # Mobile Layout (stacked)
+                    with ui.column().classes('mobile-layout mobile-only w-full gap-4'):
                         # Date Picker
                         with ui.input('Date', value=date.today().strftime('%d.%m.%Y')) as date_field:
                             with date_field.add_slot('prepend'):
@@ -243,6 +294,7 @@ def add_expense_page():
                                 with ui.menu() as date_menu:
                                     ui.date().bind_value(date_field).props('mask="DD.MM.YYYY"')
                         
+                        # Category Select
                         category_select = ui.select(
                             options=settings.EXPENSE_CATEGORIES,
                             label="Category", value="Lebensmittel"
@@ -260,12 +312,53 @@ def add_expense_page():
                         
                         type_toggle.on_value_change(update_categories)
                         
-                        desc_input = ui.input(label="Description").classes('sm:col-span-2 w-full')
+                        # Description
+                        desc_input = ui.input(label="Description").classes('w-full')
                         
+                        # Amount
                         amount_input = ui.input(label="Amount", placeholder="0.00").classes('w-full') \
                             .on('input', sanitize_amount) \
                             .on('blur', format_on_blur)
+                        
+                        # Currency
                         currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-full')
+                    
+                    # Desktop Layout (rows)
+                    with ui.column().classes('desktop-layout desktop-only w-full gap-4'):
+                        with ui.row().classes('w-full gap-4 flex-wrap'):
+                            # Date Picker
+                            with ui.input('Date', value=date.today().strftime('%d.%m.%Y')).classes('flex-1 min-w-0') as date_field:
+                                with date_field.add_slot('prepend'):
+                                    ui.icon('event').classes('cursor-pointer').on('click', lambda: date_menu.open())
+                                    with ui.menu() as date_menu:
+                                        ui.date().bind_value(date_field).props('mask="DD.MM.YYYY"')
+                            # Category Select
+                            category_select = ui.select(
+                                options=settings.EXPENSE_CATEGORIES,
+                                label="Category", value="Lebensmittel"
+                            ).classes('flex-1 min-w-0')
+                        
+                        def update_categories():
+                            if type_toggle.value == 'Expense':
+                                category_select.options = settings.EXPENSE_CATEGORIES
+                                category_select.value = settings.EXPENSE_CATEGORIES[0]
+                                type_toggle.props('toggle-color=red')
+                            else:
+                                category_select.options = settings.INCOME_CATEGORIES
+                                category_select.value = settings.INCOME_CATEGORIES[0]
+                                type_toggle.props('toggle-color=green')
+                        
+                        type_toggle.on_value_change(update_categories)
+                        
+                        # Description
+                        desc_input = ui.input(label="Description").classes('w-full')
+                        
+                        # Amount & Currency
+                        with ui.row().classes('w-full gap-4 flex-wrap'):
+                            amount_input = ui.input(label="Amount", placeholder="0.00").classes('flex-1 min-w-0') \
+                                .on('input', sanitize_amount) \
+                                .on('blur', format_on_blur)
+                            currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('flex-1 min-w-0')
                     
                     def save_manual():
                         try:

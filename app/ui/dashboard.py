@@ -42,7 +42,7 @@ def dashboard_page():
                 btn_next.enable()
                 month_select.value = current_month
 
-        with ui.row().classes('filter-toolbar w-full gap-3 p-3 bg-white rounded-lg shadow-sm border border-gray-200 flex flex-row items-start justify-start'):
+        with ui.row().classes('filter-toolbar responsive-row w-full gap-3 p-3 bg-white rounded-lg shadow-sm border border-gray-200 items-start justify-start'):
             # Year Selector
             with ui.column().classes('filter-group w-full gap-3 items-center md:items-start lg:w-auto'):
                 with ui.row().classes('items-center gap-1 w-full md:max-w-md justify-start'):
@@ -88,7 +88,7 @@ def dashboard_page():
 
             with content:
                 # Metrics Row
-                with ui.row().classes('w-full gap-4 flex-col md:flex-row'):
+                with ui.row().classes('w-full gap-4 responsive-row'):
                     period_label = 'All Year' if not selected_month else date(2000, selected_month, 1).strftime('%B')
                     
                     # --- Income Card ---
@@ -123,7 +123,7 @@ def dashboard_page():
                         ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
                 # --- Pie Chart & Recent Transactions ---
-                with ui.row().classes('w-full gap-4 flex-col lg:flex-row'):
+                with ui.row().classes('w-full gap-4 responsive-row'):
                     # Pie Chart
                     with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')

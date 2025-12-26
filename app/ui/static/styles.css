@@ -1,10 +1,6 @@
 .q-page-container { padding-top: 32px !important; }
 
 /* Filter toolbar stays row until 785px */
-.filter-toolbar {
-    flex-direction: row !important;
-    flex-wrap: nowrap !important;
-}
 .filter-toolbar .filter-select,
 .filter-toolbar .filter-input {
     width: 220px;
@@ -13,7 +9,6 @@
 }
 @media (max-width: 784px) {
     .filter-toolbar {
-        flex-direction: column !important;
         flex-wrap: wrap !important;
         align-items: center !important;
         justify-content: center !important;
@@ -48,27 +43,6 @@
         margin-left: auto !important;
         margin-right: auto !important;
         display: inline-flex !important;
-    }
-}
-
-/* Nav visibility toggles are now handled via injected styles in layout.py for maximum reliability */
-.desktop-nav {
-    display: flex;
-}
-.mobile-nav-button {
-    display: none;
-}
-
-/* Mobile responsive receipt cards */
-@media (max-width: 640px) {
-    .receipt-card .q-card__section {
-        padding: 12px !important;
-    }
-    
-    .receipt-card .q-img {
-        width: 80px !important;
-        height: 80px !important;
-        margin: 0 auto 12px auto !important;
     }
 }
 

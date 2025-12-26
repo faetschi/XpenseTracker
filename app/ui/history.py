@@ -10,20 +10,6 @@ import json
 def history_page():
     theme('history')
     
-    # Inject responsive styles directly to ensure they are applied correctly
-    ui.add_head_html('''
-        <style>
-            @media (min-width: 785px) {
-                .history-mobile-only { display: none !important; }
-                .history-desktop-only { display: block !important; }
-            }
-            @media (max-width: 784px) {
-                .history-desktop-only { display: none !important; }
-                .history-mobile-only { display: block !important; }
-            }
-        </style>
-    ''')
-    
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6 history-container'):
         ui.label('📜 Transaction History').classes('text-2xl font-bold text-gray-800')
         
@@ -188,7 +174,7 @@ def history_page():
             edit_dialog.open()
 
         # Desktop Table View
-        with ui.element('div').classes('w-full history-desktop-only'):
+        with ui.element('div').classes('w-full desktop-only'):
             grid = ui.aggrid({
                 'columnDefs': [
                     {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True, 'width': 100},
@@ -245,7 +231,7 @@ def history_page():
             grid.on('cellClicked', handle_cell_clicked)
 
         # Mobile Card View
-        with ui.element('div').classes('w-full history-mobile-only'):
+        with ui.element('div').classes('w-full mobile-only'):
             with ui.column().classes('w-full gap-4'):
                 for expense in expenses:
                     with ui.card().classes('w-full p-0 shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden cursor-pointer') \
@@ -259,9 +245,9 @@ def history_page():
                             with ui.row().classes('w-full items-center justify-between'):
                                 ui.label(expense.date.strftime('%d.%m.%Y')).classes('text-s font-bold text-gray-500 uppercase tracking-wider')
                                 with ui.row().classes('gap-0'):
-                                    ui.button(icon='edit').props('flat round dense').classes('text-blue-600 scale-90') \
+                                    ui.button(icon='edit').props('flat round dense aria-label="Edit transaction" title="Edit"').classes('text-blue-600 scale-90') \
                                         .on('click.stop', lambda _, e=expense: show_edit_dialog(e))
-                                    ui.button(icon='delete').props('flat round dense').classes('text-red-600 scale-90') \
+                                    ui.button(icon='delete').props('flat round dense aria-label="Delete transaction" title="Delete"').classes('text-red-600 scale-90') \
                                         .on('click.stop', lambda _, e=expense: delete_handler(e.id, e.type, e.category, e.amount_eur))
                             
                             # Category & Amount Row (Combined for slimness)
