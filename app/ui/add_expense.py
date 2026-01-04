@@ -285,58 +285,21 @@ def add_expense_page():
                         .props('spread toggle-color=red') \
                         .classes('w-full mb-4')
                     
-                    # Mobile Layout (stacked)
-                    with ui.column().classes('mobile-layout mobile-only w-full gap-4'):
-                        # Date Picker
-                        with ui.input('Date', value=date.today().strftime('%d.%m.%Y')) as date_field:
-                            with date_field.add_slot('prepend'):
-                                ui.icon('event').classes('cursor-pointer').on('click', lambda: date_menu.open())
-                                with ui.menu() as date_menu:
-                                    ui.date().bind_value(date_field).props('mask="DD.MM.YYYY"')
-                        
-                        # Category Select
-                        category_select = ui.select(
-                            options=settings.EXPENSE_CATEGORIES,
-                            label="Category", value="Lebensmittel"
-                        ).classes('w-full')
-                        
-                        def update_categories():
-                            if type_toggle.value == 'Expense':
-                                category_select.options = settings.EXPENSE_CATEGORIES
-                                category_select.value = settings.EXPENSE_CATEGORIES[0]
-                                type_toggle.props('toggle-color=red')
-                            else:
-                                category_select.options = settings.INCOME_CATEGORIES
-                                category_select.value = settings.INCOME_CATEGORIES[0]
-                                type_toggle.props('toggle-color=green')
-                        
-                        type_toggle.on_value_change(update_categories)
-                        
-                        # Description
-                        desc_input = ui.input(label="Description").classes('w-full')
-                        
-                        # Amount
-                        amount_input = ui.input(label="Amount", placeholder="0.00").classes('w-full') \
-                            .on('input', sanitize_amount) \
-                            .on('blur', format_on_blur)
-                        
-                        # Currency
-                        currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-full')
-                    
-                    # Desktop Layout (rows)
-                    with ui.column().classes('desktop-layout desktop-only w-full gap-4'):
-                        with ui.row().classes('w-full gap-4 flex-wrap'):
+                    # Responsive Layout
+                    with ui.column().classes('w-full gap-4'):
+                        with ui.grid().classes('w-full gap-4 responsive-grid-2'):
                             # Date Picker
-                            with ui.input('Date', value=date.today().strftime('%d.%m.%Y')).classes('flex-1 min-w-0') as date_field:
+                            with ui.input('Date', value=date.today().strftime('%d.%m.%Y')).classes('w-full') as date_field:
                                 with date_field.add_slot('prepend'):
                                     ui.icon('event').classes('cursor-pointer').on('click', lambda: date_menu.open())
                                     with ui.menu() as date_menu:
                                         ui.date().bind_value(date_field).props('mask="DD.MM.YYYY"')
+                            
                             # Category Select
                             category_select = ui.select(
                                 options=settings.EXPENSE_CATEGORIES,
                                 label="Category", value="Lebensmittel"
-                            ).classes('flex-1 min-w-0')
+                            ).classes('w-full')
                         
                         def update_categories():
                             if type_toggle.value == 'Expense':
@@ -354,14 +317,18 @@ def add_expense_page():
                         desc_input = ui.input(label="Description").classes('w-full')
                         
                         # Amount & Currency
-                        with ui.row().classes('w-full gap-4 flex-wrap'):
-                            amount_input = ui.input(label="Amount", placeholder="0.00").classes('flex-1 min-w-0') \
+                        with ui.grid().classes('w-full gap-4 responsive-grid-2'):
+                            amount_input = ui.input(label="Amount", placeholder="0.00").classes('w-full') \
                                 .on('input', sanitize_amount) \
                                 .on('blur', format_on_blur)
-                            currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('flex-1 min-w-0')
+                            currency_select = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-full')
                     
                     def save_manual():
                         try:
+                            if not amount_input.value:
+                                ui.notify('Please enter an amount', type='warning')
+                                return
+
                             # Sanitize amount (replace comma with dot)
                             amount_val = str(amount_input.value).replace(',', '.')
 
