@@ -83,3 +83,4 @@ If using SQLite, the database file will be stored in `app/data/xpensetracker.db`
 For detailed instructions on how to deploy to a Raspberry Pi or manage backups, see the [deployment/](deployment/) folder:
 - [Raspberry Pi Guide](deployment/RASPBERRY-PI.md)
 - [Production & Backup Guide](deployment/PRODUCTION.md)
+  - Includes manual update steps if Watchtower is disabled.

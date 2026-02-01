@@ -273,7 +273,44 @@ Now on the Pi, download the image from GitHub Packages (GHCR) instead of buildin
     ./deployment/restore.sh
     ```
 
-## Step 3: Daily Deployment Workflow
+## Step 3: Manual Updates (Without Watchtower)
+
+If you disable Watchtower, you can still update the container manually after pushing a new image from your PC.
+
+1.  **SSH into your Pi and go to the app folder:**
+    ```bash
+    ssh pi@dockerpi.local
+    cd ~/xpense-tracker
+    ```
+
+2.  **Pull the latest image:**
+    ```bash
+    docker compose pull xpensetracker
+    ```
+
+3.  **Recreate the container with the new image:**
+    ```bash
+    docker compose up -d --no-deps --force-recreate xpensetracker
+    ```
+
+4.  **(Optional) Clean up old images to save SD space:**
+    ```bash
+    docker image prune -f
+    ```
+
+**Optional helper script (run from your PC):**
+
+If you don’t want to type the commands every time, run the helper script from your PC:
+
+```cmd
+.\deployment\update_pi.bat dockerpi.local pi
+```
+
+You can omit arguments to use the defaults in the script.
+
+> Tip: To disable Watchtower, remove the `watchtower` service and the `com.centurylinklabs.watchtower.enable` label from your `docker-compose.yml`.
+
+## Step 4: Daily Deployment Workflow
 
 See the [`TL;DR - Daily Deployment Workflow`](#tldr---daily-deployment-workflow) at the top of this guide for the quick command.
 
