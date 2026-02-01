@@ -9,6 +9,7 @@ from app.ui.layout import theme, BREAKPOINT
 from app.utils.logger import get_logger
 import io
 import os
+import asyncio
 
 # Configure logging
 logger = get_logger(__name__)
@@ -210,8 +211,8 @@ def add_expense_page():
                                 ui.notify("Error: Upload content missing.", type='negative', timeout=5000)
                                 return
 
-                            # Delegate processing to ReceiptService
-                            result, file_path = await ReceiptService.process_receipt(content, filename)
+                            # Save receipt only (scan on demand for performance)
+                            file_path = await ReceiptService.save_receipt(content, filename)
                             
                             # Create UI Card for this receipt
                             with receipts_container:
@@ -236,14 +237,18 @@ def add_expense_page():
                                         with ui.column().classes('flex-grow gap-2 w-full'):
                                             # Mobile: Stack fields vertically, Desktop: Use grid
                                             with ui.grid().classes('w-full gap-2 responsive-grid-2'):
-                                                date_input = ui.input(label='Date', value=result.date.strftime('%Y-%m-%d')).props('type=date').classes('w-full')
-                                                cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=result.category).classes('w-full')
-                                                desc_input = ui.input(label="Description", value=result.description).classes('w-full sm:col-span-2')
+                                                date_input = ui.input(label='Date', value=date.today().strftime('%Y-%m-%d')).props('type=date').classes('w-full')
+                                                cat_input = ui.select(options=settings.EXPENSE_CATEGORIES, label="Category", value=settings.EXPENSE_CATEGORIES[0]).classes('w-full')
+                                                desc_input = ui.input(label="Description", value='').classes('w-full sm:col-span-2')
                                                 with ui.row().classes('w-full gap-2 sm:col-span-2'):
-                                                    amount_input = ui.input(label="Amount", value=f"{float(result.amount):.2f}").classes('flex-1') \
+                                                    amount_input = ui.input(label="Amount", value=None).classes('flex-1') \
                                                         .on('input', sanitize_amount) \
                                                         .on('blur', format_on_blur)
-                                                    curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=result.currency).classes('w-24')
+                                                    curr_input = ui.select(options=settings.CURRENCIES, label="Currency", value=settings.DEFAULT_CURRENCY).classes('w-24')
+
+                                            with ui.row().classes('w-full justify-center'):
+                                                scan_btn = ui.button('Scan', icon='auto_fix_high', on_click=lambda: None) \
+                                                    .props('outline color=blue').classes('mt-2 w-full sm:w-40')
                                     
                                     entry['inputs'] = {
                                         'date': date_input,
@@ -252,12 +257,33 @@ def add_expense_page():
                                         'amount': amount_input,
                                         'currency': curr_input
                                     }
+                                    entry['file_path'] = file_path
+                                    entry['scan_btn'] = scan_btn
                                     active_receipts.append(entry)
                             
                             # Show Save All button
                             save_all_btn.classes(remove='hidden')
                             
-                            ui.notify('Receipt scanned! Review and save.', type='positive', timeout=5000)
+                            async def run_scan(entry_ref):
+                                entry_ref['scan_btn'].disable()
+                                entry_ref['scan_btn'].props('loading')
+
+                                try:
+                                    result = await ReceiptService.scan_receipt(entry_ref['file_path'])
+
+                                    entry_ref['inputs']['date'].set_value(result.date.strftime('%Y-%m-%d'))
+                                    entry_ref['inputs']['category'].set_value(result.category)
+                                    entry_ref['inputs']['description'].set_value(result.description)
+                                    entry_ref['inputs']['amount'].set_value(f"{float(result.amount):.2f}")
+                                    entry_ref['inputs']['currency'].set_value(result.currency)
+                                    ui.notify('Receipt scanned! Review and save.', type='positive', timeout=5000)
+                                except Exception as scan_err:
+                                    ui.notify(f'Scan failed: {scan_err}', type='negative', timeout=5000)
+                                finally:
+                                    entry_ref['scan_btn'].enable()
+                                    entry_ref['scan_btn'].props(remove='loading')
+
+                            scan_btn.on('click', lambda e, entry_ref=entry: asyncio.create_task(run_scan(entry_ref)))
                             
                         except Exception as err:
                             ui.notify(f'Error scanning receipt: {str(err)}', type='negative', timeout=5000)

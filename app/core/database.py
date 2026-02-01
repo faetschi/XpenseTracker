@@ -15,6 +15,9 @@ if settings.DB_TYPE == "sqlite":
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")
         cursor.execute("PRAGMA synchronous=NORMAL")
+        cursor.execute(f"PRAGMA temp_store={settings.SQLITE_TEMP_STORE}")
+        cursor.execute(f"PRAGMA cache_size=-{settings.SQLITE_CACHE_SIZE_KB}")
+        cursor.execute(f"PRAGMA mmap_size={settings.SQLITE_MMAP_SIZE_MB * 1024 * 1024}")
         cursor.close()
 
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)

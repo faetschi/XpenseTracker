@@ -2,8 +2,6 @@ from __future__ import annotations
 
 from typing import Any, Callable
 
-import pandas as pd
-import plotly.express as px
 from nicegui import ui
 
 from .plotly_utils import js_emit_visible_legend_labels
@@ -23,6 +21,9 @@ def render_expenses_by_category_pie(
     if not by_category:
         ui.label('No data available for this period.').classes('text-gray-400 italic')
         return
+
+    import pandas as pd
+    import plotly.express as px
 
     df = pd.DataFrame(list(by_category.items()), columns=["Category", "Amount"])
 
@@ -69,3 +70,38 @@ def render_expenses_by_category_pie(
     chart.on('plotly_relayout', handle_visible_labels_update, js_handler=js_handler)
     chart.on('plotly_restyle', handle_visible_labels_update, js_handler=js_handler)
     chart.on('plotly_afterplot', handle_visible_labels_update, js_handler=js_handler)
+
+
+def render_expenses_by_category_lightweight(
+    *,
+    by_category: dict[str, float] | None,
+    expenses_label: ui.label,
+    format_currency: Callable[[Any], str],
+    max_items: int = 6,
+) -> None:
+    """Render a lightweight bar-style chart without pandas/plotly."""
+
+    if not by_category:
+        ui.label('No data available for this period.').classes('text-gray-400 italic')
+        return
+
+    items = sorted(by_category.items(), key=lambda kv: kv[1], reverse=True)
+    top_items = items[:max_items]
+    other_total = sum(value for _, value in items[max_items:])
+    if other_total > 0:
+        top_items.append(("Other", other_total))
+
+    total = sum(value for _, value in top_items) or 0
+
+    with ui.column().classes('w-full gap-2'):
+        for category, value in top_items:
+            pct = (value / total * 100) if total else 0
+            with ui.row().classes('w-full items-center gap-2'):
+                ui.label(category).classes('text-sm text-gray-700 w-32 truncate')
+                bar = ui.element('div').classes('flex-1 h-2 bg-gray-200 rounded')
+                with bar:
+                    ui.element('div').classes('h-2 bg-blue-500 rounded').style(f'width: {pct:.1f}%')
+                ui.label(f'{pct:.1f}%').classes('text-xs text-gray-500 w-12 text-right')
+
+        expenses_label.text = format_currency(sum(value for _, value in top_items))
+        expenses_label.update()

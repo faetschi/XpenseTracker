@@ -70,17 +70,8 @@ class ReceiptService:
             logger.error(f"Error during upload cleanup: {e}")
 
     @staticmethod
-    async def process_receipt(file_obj, original_filename: str = None):
-        """Handle receipt processing with validation and safe file handling.
-
-        Steps:
-        - Read bytes from the incoming object
-        - Validate the bytes with PIL
-        - Normalize extension and filename
-        - Save validated/normalized image to disk
-        - Resize/convert as needed
-        - Run AI scan
-        """
+    async def save_receipt(file_obj, original_filename: str = None) -> str:
+        """Save a receipt image with validation/normalization and return the file path."""
         try:
             # Ensure uploads dir exists
             os.makedirs(ReceiptService.UPLOAD_DIR, exist_ok=True)
@@ -128,9 +119,9 @@ class ReceiptService:
             # Re-open image properly (note: verify() leaves file in an unusable state)
             image = Image.open(io.BytesIO(content)).convert('RGB')
 
-            # Resize image to save RAM during processing (Max 1600px)
+            # Resize image to save RAM during processing
             try:
-                max_size = 1600
+                max_size = settings.RECEIPT_MAX_SIZE_PX
                 if image.width > max_size or image.height > max_size:
                     logger.info(f"Resizing image from {image.size} to max {max_size}px...")
                     image.thumbnail((max_size, max_size), Image.Resampling.LANCZOS)
@@ -148,23 +139,30 @@ class ReceiptService:
             try:
                 save_kwargs = {}
                 if out_ext in ('.jpg', '.jpeg'):
-                    save_kwargs.update({'format': 'JPEG', 'quality': 85, 'optimize': True})
+                    save_kwargs.update({'format': 'JPEG', 'quality': settings.RECEIPT_JPEG_QUALITY, 'optimize': True})
                 image.save(file_path, **save_kwargs)
             except Exception as save_err:
                 logger.error(f"Failed to save processed image: {save_err}", exc_info=True)
                 raise
 
-            # Run AI Scan
-            logger.info("Starting AI scan...")
-            scanner = LLMFactory.get_scanner()
-
-            # Run synchronous scanner in a separate thread to avoid blocking the event loop
-            result = await asyncio.to_thread(scanner.scan_receipt, file_path)
-
-            logger.debug(f"AI Scan result: {result}")
-
-            return result, file_path
+            return file_path
 
         except Exception:
             logger.error("Error processing receipt", exc_info=True)
             raise
+
+    @staticmethod
+    async def scan_receipt(file_path: str):
+        """Run AI scan for a given file path."""
+        logger.info("Starting AI scan...")
+        scanner = LLMFactory.get_scanner()
+        result = await asyncio.to_thread(scanner.scan_receipt, file_path)
+        logger.debug(f"AI Scan result: {result}")
+        return result
+
+    @staticmethod
+    async def process_receipt(file_obj, original_filename: str = None):
+        """Backward-compatible wrapper: save + scan."""
+        file_path = await ReceiptService.save_receipt(file_obj, original_filename)
+        result = await ReceiptService.scan_receipt(file_path)
+        return result, file_path

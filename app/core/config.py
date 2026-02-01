@@ -33,12 +33,25 @@ class Settings(BaseSettings):
     
     # Dashboard Settings
     DASHBOARD_YEARS_LOOKBACK: int = 10 # list of available years
+    DASHBOARD_CACHE_TTL_SECONDS: int = 30
 
     # File Upload Settings
     UPLOAD_RETENTION_MINUTES: int = 1440
+    RECEIPT_MAX_SIZE_PX: int = 1200
+    RECEIPT_JPEG_QUALITY: int = 75
+
+    # SQLite Performance Settings
+    SQLITE_CACHE_SIZE_KB: int = 20000  # Negative value uses KB units in PRAGMA cache_size
+    SQLITE_MMAP_SIZE_MB: int = 64
+    SQLITE_TEMP_STORE: str = "MEMORY"
 
     # Logging Settings
     LOG_LEVEL: str = "INFO"
+
+    # Performance Toggles
+    INIT_DB_ON_STARTUP: bool = True
+    ENABLE_CHARTS: bool = True
+    LIGHTWEIGHT_CHARTS: bool = False
 
     # UI Settings
     DEFAULT_CURRENCY: str = "EUR"

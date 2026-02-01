@@ -11,8 +11,9 @@ import os
 # Ensure data directory exists for SQLite and settings
 os.makedirs('app/data', exist_ok=True)
 
-# Initialize DB tables
-Base.metadata.create_all(bind=engine)
+# Initialize DB tables (optional for faster startup in production)
+if settings.INIT_DB_ON_STARTUP:
+    Base.metadata.create_all(bind=engine)
 
 # Serve uploads directory
 os.makedirs('app/data/uploads', exist_ok=True)
@@ -66,5 +67,6 @@ ui.run(
     title='XpenseTracker',
     port=8501,
     favicon='💰',
-    storage_secret=settings.AUTH_SECRET
+    storage_secret=settings.AUTH_SECRET,
+    reload=False
 )

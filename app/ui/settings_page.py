@@ -168,6 +168,20 @@ def settings_page():
                 with retention:
                     ui.tooltip('Automatically delete uploaded receipt images older than this value (minutes).').props('anchor="bottom left" self="top left"')
 
+                enable_charts = ui.switch(
+                    text='Enable Charts',
+                    value=settings.ENABLE_CHARTS
+                ).classes('w-full')
+                with enable_charts:
+                    ui.tooltip('Toggle chart rendering on the dashboard.').props('anchor="bottom left" self="top left"')
+
+                lightweight_charts = ui.switch(
+                    text='Lightweight Charts',
+                    value=settings.LIGHTWEIGHT_CHARTS
+                ).classes('w-full')
+                with lightweight_charts:
+                    ui.tooltip('Use lightweight charts for better performance.').props('anchor="bottom left" self="top left"')
+
         def save_settings():
             try:
                 # Update in-memory settings
@@ -184,6 +198,8 @@ def settings_page():
 
                 settings.DASHBOARD_YEARS_LOOKBACK = int(lookback.value)
                 settings.UPLOAD_RETENTION_MINUTES = int(retention.value)
+                settings.ENABLE_CHARTS = bool(enable_charts.value)
+                settings.LIGHTWEIGHT_CHARTS = bool(lightweight_charts.value)
                 
                 # Persist to user_settings.json (JSON is better suited for complex data types and user prefs)
                 # NOTE: API keys are excluded here to prevent saving secrets to this file.
@@ -195,7 +211,9 @@ def settings_page():
                     "DEFAULT_CURRENCY": settings.DEFAULT_CURRENCY,
                     "THEME_MODE": settings.THEME_MODE,
                     "DASHBOARD_YEARS_LOOKBACK": settings.DASHBOARD_YEARS_LOOKBACK,
-                    "UPLOAD_RETENTION_MINUTES": settings.UPLOAD_RETENTION_MINUTES
+                    "UPLOAD_RETENTION_MINUTES": settings.UPLOAD_RETENTION_MINUTES,
+                    "ENABLE_CHARTS": settings.ENABLE_CHARTS,
+                    "LIGHTWEIGHT_CHARTS": settings.LIGHTWEIGHT_CHARTS
                 }
                 
                 with open(USER_SETTINGS_PATH, "w") as f:

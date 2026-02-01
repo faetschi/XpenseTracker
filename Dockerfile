@@ -18,6 +18,6 @@ ENV PYTHONPATH=/app
 
 EXPOSE 8501
 
-HEALTHCHECK CMD curl --fail http://localhost:8501/ || exit 1
-
-ENTRYPOINT ["python", "app/main.py", "--reload"]
+HEALTHCHECK --interval=60s --timeout=2s --retries=3 CMD curl --fail http://localhost:8501/ || exit 1
+# for dev add: "--reload"
+ENTRYPOINT ["python", "app/main.py"]

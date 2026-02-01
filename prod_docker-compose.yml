@@ -1,0 +1,62 @@
+services:
+    xpensetracker:
+        image: ghcr.io/faetschi/xpensetracker:latest
+        container_name: xpensetracker
+        restart: always
+        ports:
+            - "8501:8501"
+        # Load Secrets from the .env file on the Pi
+        env_file:
+            - .env
+        # Environment Overrides (Specific to Pi)
+        environment:
+            - DB_TYPE=sqlite
+            - PYTHONWARNINGS=ignore
+            - PYTHONDONTWRITEBYTECODE=1
+            - PYTHONOPTIMIZE=1
+            - INIT_DB_ON_STARTUP=false
+            # ENABLE_CHARTS=false → no chart rendering at all.
+            # ENABLE_CHARTS=true + LIGHTWEIGHT_CHARTS=true → lightweight chart.
+            # ENABLE_CHARTS=true + LIGHTWEIGHT_CHARTS=false → full Plotly chart.
+            - ENABLE_CHARTS=true
+            - LIGHTWEIGHT_CHARTS=true
+        # Persistence: Maps the Pi's folder to the container
+        volumes:
+            - ./data:/app/app/data
+        # Safety Limits for Pi Zero 2 W (Compose-compatible)
+        mem_limit: 350m  # Leaves ~100MB for OS + Watchtower
+        memswap_limit: 350m
+
+        # Log Rotation (Prevents SD card filling up)
+        logging:
+            driver: "local"
+            options:
+                max-size: "1m"
+                max-file: "2"
+        # Tag for Watchtower to update this specific container
+        labels:
+            - "com.centurylinklabs.watchtower.enable=true"
+
+    watchtower:
+        image: nickfedor/watchtower:arm64v8
+        container_name: watchtower
+        restart: always
+        mem_limit: 64m
+        memswap_limit: 64m
+        environment:
+            - WATCHTOWER_CLEANUP=true
+            - WATCHTOWER_LABEL_ENABLE=true
+            - WATCHTOWER_POLL_INTERVAL=604800
+            - TZ=Europe/Berlin
+            # Notifications Setup
+            - WATCHTOWER_NOTIFICATIONS=shoutrrr
+            - WATCHTOWER_NOTIFICATION_URL=discord://qg0Tl3Astp0TEMydEBoWYsKjD-s2qpSoCIT_Rkk14OCV12g54xR7QjWg-Yp2_gOB1WAm@1452601050602278932
+            - WATCHTOWER_NOTIFICATION_REPORT=true
+            - WATCHTOWER_NO_STARTUP_MESSAGE=true
+            - WATCHTOWER_NOTIFICATION_TEMPLATE={{range .}}{{.Message}}{{println}}{{end}}
+            - WATCHTOWER_NOTIFICATIONS_LEVEL=info
+        volumes:
+            - /var/run/docker.sock:/var/run/docker.sock
+            - /home/faetschi/.docker/config.json:/config.json
+        # Checks weekly (604800s), removes old images (cleanup), only updates labeled apps
+        command: --interval 604800 --cleanup --label-enable
