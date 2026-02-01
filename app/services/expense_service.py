@@ -1,6 +1,8 @@
-from typing import Any, Dict, List
+from typing import Any, Dict, List, Optional
 
-from sqlalchemy import func
+from datetime import date
+
+from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
 from app.db.models import Expense
@@ -60,6 +62,103 @@ class ExpenseService:
     @staticmethod
     def get_expenses(db: Session, skip: int = 0, limit: int = 100) -> List[Expense]:
         return db.query(Expense).order_by(Expense.date.desc()).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def get_expenses_filtered(
+        db: Session,
+        skip: int = 0,
+        limit: int = 100,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
+        expense_type: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> List[Expense]:
+        query = db.query(Expense)
+
+        if start_date:
+            query = query.filter(Expense.date >= start_date)
+        if end_date:
+            query = query.filter(Expense.date <= end_date)
+        if category:
+            query = query.filter(Expense.category == category)
+        if expense_type:
+            query = query.filter(Expense.type == expense_type)
+        if search:
+            search_like = f"%{search.strip()}%"
+            query = query.filter(
+                or_(
+                    Expense.description.ilike(search_like),
+                    Expense.category.ilike(search_like),
+                )
+            )
+
+        return query.order_by(Expense.date.desc()).offset(skip).limit(limit).all()
+
+    @staticmethod
+    def count_expenses_filtered(
+        db: Session,
+        start_date: Optional[date] = None,
+        end_date: Optional[date] = None,
+        category: Optional[str] = None,
+        expense_type: Optional[str] = None,
+        search: Optional[str] = None,
+    ) -> int:
+        query = db.query(func.count(Expense.id))
+
+        if start_date:
+            query = query.filter(Expense.date >= start_date)
+        if end_date:
+            query = query.filter(Expense.date <= end_date)
+        if category:
+            query = query.filter(Expense.category == category)
+        if expense_type:
+            query = query.filter(Expense.type == expense_type)
+        if search:
+            search_like = f"%{search.strip()}%"
+            query = query.filter(
+                or_(
+                    Expense.description.ilike(search_like),
+                    Expense.category.ilike(search_like),
+                )
+            )
+
+        return int(query.scalar() or 0)
+
+    @staticmethod
+    def get_summary(db: Session, year: Optional[int] = None, month: Optional[int] = None) -> Dict[str, Any]:
+        query = db.query(Expense)
+
+        if year:
+            query = query.filter(func.extract('year', Expense.date) == year)
+        if month:
+            query = query.filter(func.extract('month', Expense.date) == month)
+
+        total_spent = query.filter(Expense.type == 'expense').with_entities(func.sum(Expense.amount_eur)).scalar() or 0
+        total_income = query.filter(Expense.type == 'income').with_entities(func.sum(Expense.amount_eur)).scalar() or 0
+
+        return {
+            "total_spent": total_spent,
+            "total_income": total_income,
+            "balance": total_income - total_spent,
+        }
+
+    @staticmethod
+    def get_category_breakdown(
+        db: Session, year: Optional[int] = None, month: Optional[int] = None
+    ) -> Dict[str, float]:
+        query = db.query(Expense)
+
+        if year:
+            query = query.filter(func.extract('year', Expense.date) == year)
+        if month:
+            query = query.filter(func.extract('month', Expense.date) == month)
+
+        category_stats = query.filter(Expense.type == 'expense').with_entities(
+            Expense.category, func.sum(Expense.amount_eur)
+        ).group_by(Expense.category).all()
+
+        return {cat: float(amt) for cat, amt in category_stats}
 
     @staticmethod
     def get_stats(db: Session, year: int = None, month: int = None) -> Dict[str, Any]:

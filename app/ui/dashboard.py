@@ -1,3 +1,5 @@
+import asyncio
+
 from nicegui import ui
 from datetime import date
 from app.core.database import get_db
@@ -81,8 +83,8 @@ def dashboard_page():
             
             db = next(get_db())
             try:
-                stats = ExpenseService.get_stats(db, year=selected_year, month=selected_month)
-                expenses = ExpenseService.get_expenses(db, limit=5) # Recent transactions stay global for now
+                summary = ExpenseService.get_summary(db, year=selected_year, month=selected_month)
+                expenses = ExpenseService.get_expenses(db, limit=5)  # Recent transactions stay global for now
             finally:
                 db.close()
 
@@ -94,22 +96,22 @@ def dashboard_page():
                     # --- Income Card ---
                     with ui.card().classes('flex-1 w-full p-4 border-l-4 border-green-500 shadow-sm'):
                         ui.label(f"Income ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
-                        ui.label(format_currency(stats["total_income"])).classes('text-3xl font-bold text-gray-800')
+                        ui.label(format_currency(summary["total_income"])).classes('text-3xl font-bold text-gray-800')
 
                     # --- Expenses Card ---
                     with ui.card().classes('flex-1 w-full p-4 border-l-4 border-red-500 shadow-sm'):
                         ui.label(f"Expenses ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
-                        expenses_label = ui.label(format_currency(stats["total_spent"])).classes('text-3xl font-bold text-gray-800')
+                        expenses_label = ui.label(format_currency(summary["total_spent"])).classes('text-3xl font-bold text-gray-800')
 
                     # --- Leftover-Balance Card ---
-                    balance = stats["balance"]
+                    balance = summary["balance"]
                     color = 'green' if balance >= 0 else 'red'
                     with ui.card().classes(f'flex-1 w-full p-4 border-l-4 border-{color}-500 shadow-sm'):
                         ui.label(f"Leftover ({period_label})").classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(format_currency(balance)).classes(f'text-3xl font-bold text-{color}-600')
 
                     # --- Savings Rate Card ---
-                    savings_rate = (stats["balance"] / stats["total_income"]) * 100 if stats["total_income"] > 0 else 0
+                    savings_rate = (summary["balance"] / summary["total_income"]) * 100 if summary["total_income"] > 0 else 0
                     
                     if savings_rate > 1:
                         savings_color = 'green'
@@ -127,11 +129,9 @@ def dashboard_page():
                     # Pie Chart
                     with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
                         ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
-                        render_expenses_by_category_pie(
-                            by_category=stats.get('by_category'),
-                            expenses_label=expenses_label,
-                            format_currency=format_currency,
-                        )
+                        chart_container = ui.column().classes('w-full')
+                        with chart_container:
+                            ui.label('Loading chart...').classes('text-gray-400 italic')
 
                     # --- Recent Transactions ---
                     with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
@@ -154,6 +154,26 @@ def dashboard_page():
                                             ).classes(f'text-lg font-semibold {amount_class} whitespace-nowrap')
                         else:
                             ui.label('No transactions yet.').classes('text-gray-400 italic')
+
+            async def load_chart():
+                db = next(get_db())
+                try:
+                    by_category = ExpenseService.get_category_breakdown(db, year=selected_year, month=selected_month)
+                finally:
+                    db.close()
+
+                chart_container.clear()
+                with chart_container:
+                    if by_category:
+                        render_expenses_by_category_pie(
+                            by_category=by_category,
+                            expenses_label=expenses_label,
+                            format_currency=format_currency,
+                        )
+                    else:
+                        ui.label('No expense data yet.').classes('text-gray-400 italic')
+
+            ui.timer(0.05, lambda: asyncio.create_task(load_chart()), once=True)
 
         # Bind refresh to filters
         year_select.on_value_change(refresh_dashboard)

@@ -1,5 +1,6 @@
 from nicegui import ui
-from datetime import datetime
+from datetime import date, datetime, timedelta
+from typing import Optional
 from app.core.database import get_db
 from app.services.expense_service import ExpenseService
 from app.utils.formatting import format_currency
@@ -13,31 +14,35 @@ def history_page():
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6 history-container'):
         ui.label('📜 Transaction History').classes('text-2xl font-bold text-gray-800')
         
-        # Fetch Data
-        db = next(get_db())
-        try:
-            expenses = ExpenseService.get_expenses(db, limit=1000)
-        finally:
-            db.close()
-        
-        if not expenses:
-            ui.label('No transactions found.').classes('text-gray-500')
-            return
+        page_size = 25
+        current_page = 1
+        total_count = 0
 
-        # Prepare data for AgGrid
-        rows = [
-            {
-                'id': e.id,
-                'date': e.date.strftime('%d.%m.%Y'),
-                'type': e.type,
-                'category': e.category,
-                'description': e.description,
-                'amount': float(e.amount),
-                'currency': e.currency,
-                'amount_eur': float(e.amount_eur),
-                'actions': '<span style="cursor: pointer; font-size: 1.2em;">❌</span>'
-            } for e in expenses
-        ]
+        today = date.today()
+        default_start_date = today - timedelta(days=30)
+
+        def to_date(value: Optional[str]) -> Optional[date]:
+            if not value:
+                return None
+            try:
+                return datetime.strptime(value, '%Y-%m-%d').date()
+            except ValueError:
+                return None
+
+        def build_rows(expenses_list):
+            return [
+                {
+                    'id': e.id,
+                    'date': e.date.strftime('%d.%m.%Y'),
+                    'type': e.type,
+                    'category': e.category,
+                    'description': e.description,
+                    'amount': float(e.amount),
+                    'currency': e.currency,
+                    'amount_eur': float(e.amount_eur),
+                    'actions': '<span style="cursor: pointer; font-size: 1.2em;">❌</span>'
+                } for e in expenses_list
+            ]
         
         async def handle_cell_value_change(e):
             row_id = int(e.args['data']['id'])
@@ -173,67 +178,165 @@ def history_page():
             
             edit_dialog.open()
 
-        # Desktop Table View
-        with ui.element('div').classes('w-full desktop-only'):
-            grid = ui.aggrid({
-                'columnDefs': [
-                    {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True, 'width': 100},
-                    {'headerName': 'Type', 'field': 'type', 'sortable': True, 'filter': True, 'editable': True,
-                     'cellEditor': 'agSelectCellEditor',
-                     'cellEditorParams': {'values': ['expense', 'income']}, 'width': 80},
-                    {'headerName': 'Category', 'field': 'category', 'sortable': True, 'filter': True, 'editable': True, 'width': 120,
-                     ':cellEditorSelector': f"""(params) => {{
-                         if (params.data.type === 'income') {{
+        # Filters & Search
+        all_categories = sorted(set(settings.INCOME_CATEGORIES + settings.EXPENSE_CATEGORIES))
+
+        def apply_filters():
+            load_page(1)
+
+        with ui.row().classes('w-full gap-3 items-end flex-wrap'):
+            search_input = ui.input('Search description/category') \
+                .props('outlined dense').classes('max-w-sm w-full') \
+                .on_value_change(lambda _: apply_filters())
+            type_select = ui.select(['All', 'expense', 'income'], value='All', label='Type') \
+                .props('outlined dense options-dense behavior="menu"').classes('max-w-[160px] w-full') \
+                .on_value_change(lambda _: apply_filters())
+            category_select = ui.select(['All'] + all_categories, value='All', label='Category') \
+                .props('outlined dense options-dense behavior="menu"').classes('max-w-[220px] w-full') \
+                .on_value_change(lambda _: apply_filters())
+            from_date = ui.input('From')
+            from_date.props('type=date outlined dense')
+            from_date.value = default_start_date.strftime('%Y-%m-%d')
+            from_date.on_value_change(lambda _: apply_filters())
+            to_date_input = ui.input('To')
+            to_date_input.props('type=date outlined dense')
+            to_date_input.value = today.strftime('%Y-%m-%d')
+            to_date_input.on_value_change(lambda _: apply_filters())
+
+            ui.button('Reset', on_click=lambda: reset_filters()).props('flat')
+
+        # Scrollable Data Area
+        with ui.element('div').classes('w-full max-h-[60vh] overflow-y-auto'):
+            # Desktop Table View
+            with ui.element('div').classes('w-full desktop-only'):
+                grid = ui.aggrid({
+                    'columnDefs': [
+                        {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True, 'width': 100},
+                        {'headerName': 'Type', 'field': 'type', 'sortable': True, 'filter': True, 'editable': True,
+                         'cellEditor': 'agSelectCellEditor',
+                         'cellEditorParams': {'values': ['expense', 'income']}, 'width': 80},
+                        {'headerName': 'Category', 'field': 'category', 'sortable': True, 'filter': True, 'editable': True, 'width': 120,
+                         ':cellEditorSelector': f"""(params) => {{
+                             if (params.data.type === 'income') {{
+                                 return {{
+                                     component: 'agSelectCellEditor',
+                                     params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                                 }};
+                             }}
                              return {{
                                  component: 'agSelectCellEditor',
-                                 params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                                 params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
                              }};
-                         }}
-                         return {{
-                             component: 'agSelectCellEditor',
-                             params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
-                         }};
-                     }}"""
-                    },
-                    {'headerName': 'Description', 'field': 'description', 'sortable': True, 'filter': True, 'editable': True, 'width': 200},
-                    {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True,
-                     'valueFormatter': "Number(value).toFixed(2)", 'width': 100,
-                     'cellClassRules': {
-                         'text-green-600 font-bold': 'data.type == "income"',
-                         'text-red-600': 'data.type == "expense"'
-                     }},
-                    {'headerName': 'Currency', 'field': 'currency', 'sortable': True, 'filter': True, 'editable': True,
-                     'cellEditor': 'agSelectCellEditor',
-                     'cellEditorParams': {'values': settings.CURRENCIES}, 'width': 80},
-                    {'headerName': 'Actions', 'field': 'actions', 'width': 80, 'editable': False, 'pinned': 'right'}
-                ],
-                'rowData': rows,
-                'pagination': True,
-                'paginationPageSize': 25,
-                'domLayout': 'autoHeight',
-                'defaultColDef': {
-                    'resizable': True,
-                    'sortable': True,
-                    'filter': True
-                }
-            }, html_columns=[6]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
-            
-            async def handle_cell_clicked(e):
-                if e.args['colId'] == 'actions':
-                    data = e.args['data']
-                    await delete_handler(
-                        int(data['id']), 
-                        data['type'], 
-                        data['category'], 
-                        data['amount_eur']
-                    )
-                    
-            grid.on('cellClicked', handle_cell_clicked)
+                         }}"""
+                        },
+                        {'headerName': 'Description', 'field': 'description', 'sortable': True, 'filter': True, 'editable': True, 'width': 200},
+                        {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True,
+                         'valueFormatter': "Number(value).toFixed(2)", 'width': 100,
+                         'cellClassRules': {
+                             'text-green-600 font-bold': 'data.type == "income"',
+                             'text-red-600': 'data.type == "expense"'
+                         }},
+                        {'headerName': 'Currency', 'field': 'currency', 'sortable': True, 'filter': True, 'editable': True,
+                         'cellEditor': 'agSelectCellEditor',
+                         'cellEditorParams': {'values': settings.CURRENCIES}, 'width': 80},
+                        {'headerName': 'Actions', 'field': 'actions', 'width': 80, 'editable': False, 'pinned': 'right'}
+                    ],
+                    'rowData': [],
+                    'pagination': False,
+                    'domLayout': 'autoHeight',
+                    'defaultColDef': {
+                        'resizable': True,
+                        'sortable': True,
+                        'filter': True
+                    }
+                }, html_columns=[6]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
+                
+                async def handle_cell_clicked(e):
+                    if e.args['colId'] == 'actions':
+                        data = e.args['data']
+                        await delete_handler(
+                            int(data['id']), 
+                            data['type'], 
+                            data['category'], 
+                            data['amount_eur']
+                        )
+                        
+                grid.on('cellClicked', handle_cell_clicked)
 
-        # Mobile Card View
-        with ui.element('div').classes('w-full mobile-only'):
-            with ui.column().classes('w-full gap-4'):
-                for expense in expenses:
+            # Mobile Card View
+            with ui.element('div').classes('w-full mobile-only'):
+                mobile_list = ui.column().classes('w-full gap-4')
+
+        # Pagination Controls
+        with ui.row().classes('w-full justify-center items-center gap-3 mt-2 flex-wrap'):
+            prev_btn = ui.button('Prev', on_click=lambda: load_page(current_page - 1)).props('outlined')
+            page_label = ui.label('Page 1').classes('text-gray-600 min-w-[140px] text-center')
+            next_btn = ui.button('Next', on_click=lambda: load_page(current_page + 1)).props('outlined')
+
+        def reset_filters():
+            search_input.value = ''
+            type_select.value = 'All'
+            category_select.value = 'All'
+            from_date.value = default_start_date.strftime('%Y-%m-%d')
+            to_date_input.value = today.strftime('%Y-%m-%d')
+            load_page(1)
+
+        def load_page(page: int):
+            nonlocal current_page, total_count
+
+            if page < 1:
+                page = 1
+
+            start_date = to_date(from_date.value)
+            end_date = to_date(to_date_input.value)
+            category = category_select.value if category_select.value != 'All' else None
+            expense_type = type_select.value if type_select.value != 'All' else None
+            search = search_input.value.strip() if search_input.value else None
+
+            db = next(get_db())
+            try:
+                total_count = ExpenseService.count_expenses_filtered(
+                    db,
+                    start_date=start_date,
+                    end_date=end_date,
+                    category=category,
+                    expense_type=expense_type,
+                    search=search,
+                )
+
+                max_page = max(1, (total_count + page_size - 1) // page_size)
+                if page > max_page:
+                    page = max_page
+
+                expenses_page = ExpenseService.get_expenses_filtered(
+                    db,
+                    skip=(page - 1) * page_size,
+                    limit=page_size,
+                    start_date=start_date,
+                    end_date=end_date,
+                    category=category,
+                    expense_type=expense_type,
+                    search=search,
+                )
+            finally:
+                db.close()
+
+            current_page = page
+            grid.options['rowData'] = build_rows(expenses_page)
+            grid.update()
+
+            page_label.text = f'Page {current_page} / {max(1, (total_count + page_size - 1) // page_size)}'
+            prev_btn.disable() if current_page <= 1 else prev_btn.enable()
+            next_btn.disable() if current_page >= max(1, (total_count + page_size - 1) // page_size) else next_btn.enable()
+
+            mobile_list.clear()
+            if not expenses_page:
+                with mobile_list:
+                    ui.label('No transactions found.').classes('text-gray-500')
+                return
+
+            with mobile_list:
+                for expense in expenses_page:
                     with ui.card().classes('w-full p-0 shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden cursor-pointer') \
                         .on('click', lambda _, e=expense: show_edit_dialog(e)):
                         # Color strip at the top based on type
@@ -269,3 +372,5 @@ def history_page():
                                         
                                     if expense.currency != 'EUR':
                                         ui.label(f"{float(expense.amount):.2f} {expense.currency}").classes('text-s text-gray-500')
+
+        load_page(1)
