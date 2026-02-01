@@ -100,7 +100,7 @@ def theme(current_page: str = None):
 
     # Header
     with ui.header().classes(
-        'bg-white border-b border-gray-200 text-gray-800 shadow-sm h-auto md:h-16 px-3 md:px-6 '
+        'bg-white border-b border-gray-200 text-gray-800 shadow-sm h-auto md:h-16 p-0 px-3 md:px-6 '
         'flex items-center justify-between flex-wrap gap-3 md:gap-6 sticky top-0 z-50 '
         'dark:bg-slate-900 dark:border-gray-700 dark:text-white'
     ):

@@ -5,6 +5,8 @@ import json
 import os
 
 class ListEditor:
+    sortable_loaded = False
+
     def __init__(self, label, initial_items):
         self.items = list(initial_items) # Copy
         self.label = label
@@ -19,8 +21,10 @@ class ListEditor:
             self.chip_container = ui.element('div').classes('w-full gap-2 flex flex-wrap items-center')
             self.update_chips()
             
-            # Enable SortableJS on the container
-            ui.add_head_html('<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>')
+            # Enable SortableJS on the container (load once)
+            if not ListEditor.sortable_loaded:
+                ui.add_head_html('<script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>')
+                ListEditor.sortable_loaded = True
             
             # Initialize SortableJS
             ui.run_javascript(f'''
