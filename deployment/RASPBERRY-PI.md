@@ -5,6 +5,8 @@ This guide documents the workflow for deploying **XpenseTracker** to a Raspberry
 
 ## **TL;DR** - Daily Deployment Workflow
 
+> If you disabled Watchtower, jump to [Step 3: Manual Updates (Without Watchtower)](#step-3-manual-updates-without-watchtower).
+
 Whenever you update your code, simply `build and push` from PC with Docker via [`deploy.bat`](deploy.bat) (Windows). The Raspberry Pi will automatically fetch the latest image via Watchtower.
 
 ```bash
