@@ -5,6 +5,7 @@
 - [x] in settings page, openai and gemini api key should be hidden from UI if AI provider: "testing" is selected. the according API key settings should only show if the appropriate provider is selected, e.g. "openai" provider then the OpenAI API key setting should show, vise-versa if "gemini" selected then show google gemini api key setting
 
 - [x] make history page, upload Receipt form (after uploading an AI Upload receipt) and Recent Transactions (on dashboard) more mobile friendly on smaller viewports (show only most important parts on mobile)
+
 - [x] adjust history page to switch between table view (desktop >= 785px) and card view (mobile < 785px) correctly
 
 - [ ] in add expense: when opening the category drop down (or any dropdown), the drop down shouldnt go up blocking a lot, it should go conventionally down
@@ -19,9 +20,13 @@
 
 - [ ] add re-occuring expenses feature, that can be configured and are "booked" every month automatically, e.g. subscriptions or rent
 
+- [ ] improve / modernize the frontend according to docs/new-ui.jpg (maybe combined with raspberry pi deployment for better performance)
+
 
 # RaspberryPi Build
 - [ ] create automatic occasional backup (db dump to file) with automatic upload/persist to somewhere in the cloud, so that i can access backups on other devices in the cloud outside of the raspbeerypi environment
+
+- [ ] improve performance for deployment on Rapsberry Pi Zero 2 W. analyze if there are any improvememts to be made, or if a raspberry pi upgrade is needed
 
 # Research
 - [ ] TaskSync Tool for GitHub Copilot to save premium requests, url: https://marketplace.visualstudio.com/items?itemName=4regab.tasksync-chat
