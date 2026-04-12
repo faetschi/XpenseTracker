@@ -119,6 +119,24 @@ def settings_page():
                 with openai_key:
                     ui.tooltip('API key for OpenAI.').props('anchor="bottom left" self="top left"')
 
+                openai_model = ui.input(
+                    label='OpenAI Model',
+                    value=settings.OPENAI_MODEL,
+                    placeholder='e.g. gpt-4o-mini'
+                ).classes('w-full') \
+                 .bind_visibility_from(ai_provider, 'value', backward=lambda v: v == 'openai')
+                with openai_model:
+                    ui.tooltip('Model name used for OpenAI calls.').props('anchor="bottom left" self="top left"')
+
+                gemini_model = ui.input(
+                    label='Gemini Model',
+                    value=settings.GEMINI_MODEL,
+                    placeholder='e.g. gemini-1.5-flash'
+                ).classes('w-full') \
+                 .bind_visibility_from(ai_provider, 'value', backward=lambda v: v == 'gemini')
+                with gemini_model:
+                    ui.tooltip('Model name used for Gemini calls.').props('anchor="bottom left" self="top left"')
+
         # --- App Constants (Lists) ---
         with ui.card().classes('w-full p-6 shadow-sm gap-4'):
             ui.label('📋 App Constants').classes('text-lg font-bold text-gray-700')
@@ -192,6 +210,8 @@ def settings_page():
                 settings.AI_PROVIDER = ai_provider.value
                 settings.GOOGLE_API_KEY = google_key.value
                 settings.OPENAI_API_KEY = openai_key.value
+                settings.OPENAI_MODEL = openai_model.value
+                settings.GEMINI_MODEL = gemini_model.value
                 
                 settings.EXPENSE_CATEGORIES = expense_cats_editor.items
                 settings.INCOME_CATEGORIES = income_cats_editor.items
@@ -209,6 +229,8 @@ def settings_page():
                 # NOTE: API keys are excluded here to prevent saving secrets to this file.
                 user_settings = {
                     "AI_PROVIDER": settings.AI_PROVIDER,
+                    "OPENAI_MODEL": settings.OPENAI_MODEL,
+                    "GEMINI_MODEL": settings.GEMINI_MODEL,
                     "EXPENSE_CATEGORIES": settings.EXPENSE_CATEGORIES,
                     "INCOME_CATEGORIES": settings.INCOME_CATEGORIES,
                     "CURRENCIES": settings.CURRENCIES,

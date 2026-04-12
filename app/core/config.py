@@ -14,9 +14,12 @@ class Settings(BaseSettings):
     POSTGRES_PORT: int = 5432
     
     # AI Settings
-    AI_PROVIDER: str = "gemini" # Default to gemini
+    AI_PROVIDER: str = "testing" # Default to testing
     GOOGLE_API_KEY: str = ""
     OPENAI_API_KEY: str = ""
+    OPENAI_MODEL: str = "gpt-4o-mini"
+    GEMINI_MODEL: str = "gemini-1.5-flash"
+    BANK_RECURRING_MAPPINGS: list[dict[str, str]] = []
 
     # Auth Settings
     ADMIN_USERNAME: str = "admin"

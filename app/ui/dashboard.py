@@ -15,6 +15,13 @@ def dashboard_page():
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         # Header
         ui.label('💰 XpenseTracker Dashboard').classes('text-2xl font-bold text-gray-800')
+
+        # Mobile quick action (keep this above filters so it is instantly visible)
+        (
+            ui.button('Add Expense', icon='add_circle', on_click=lambda: ui.navigate.to('/add'))
+            .props('no-caps')
+            .classes('mobile-only w-full mobile-add-expense')
+        )
         
         # Filter Toolbar
         current_year = date.today().year

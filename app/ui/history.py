@@ -3,6 +3,7 @@ from datetime import date, datetime, timedelta
 from typing import Optional
 from app.core.database import get_db
 from app.services.expense_service import ExpenseService
+from app.db.models import Expense
 from app.utils.formatting import format_currency
 from app.core.config import settings
 from app.ui.layout import theme
@@ -184,26 +185,62 @@ def history_page():
         def apply_filters():
             load_page(1)
 
-        with ui.row().classes('w-full gap-3 items-end flex-wrap'):
-            search_input = ui.input('Search description/category') \
-                .props('outlined dense').classes('max-w-sm w-full') \
-                .on_value_change(lambda _: apply_filters())
-            type_select = ui.select(['All', 'expense', 'income'], value='All', label='Type') \
-                .props('outlined dense options-dense behavior="menu"').classes('max-w-[160px] w-full') \
-                .on_value_change(lambda _: apply_filters())
-            category_select = ui.select(['All'] + all_categories, value='All', label='Category') \
-                .props('outlined dense options-dense behavior="menu"').classes('max-w-[220px] w-full') \
-                .on_value_change(lambda _: apply_filters())
-            from_date = ui.input('From')
-            from_date.props('type=date outlined dense')
-            from_date.value = default_start_date.strftime('%Y-%m-%d')
-            from_date.on_value_change(lambda _: apply_filters())
-            to_date_input = ui.input('To')
-            to_date_input.props('type=date outlined dense')
-            to_date_input.value = today.strftime('%Y-%m-%d')
-            to_date_input.on_value_change(lambda _: apply_filters())
+        with ui.column().classes('w-full gap-3'):
+            with ui.row().classes('w-full gap-3 items-end flex-wrap'):
+                search_input = ui.input('Search description/category') \
+                    .props('outlined dense').classes('max-w-sm w-full') \
+                    .on_value_change(lambda _: apply_filters())
+                type_select = ui.select(['All', 'expense', 'income'], value='All', label='Type') \
+                    .props('outlined dense options-dense behavior="menu"').classes('max-w-[160px] w-full') \
+                    .on_value_change(lambda _: apply_filters())
+                category_select = ui.select(['All'] + all_categories, value='All', label='Category') \
+                    .props('outlined dense options-dense behavior="menu"').classes('max-w-[220px] w-full') \
+                    .on_value_change(lambda _: apply_filters())
+                from_date = ui.input('From')
+                from_date.props('type=date outlined dense')
+                from_date.value = default_start_date.strftime('%Y-%m-%d')
+                from_date.on_value_change(lambda _: apply_filters())
+                to_date_input = ui.input('To')
+                to_date_input.props('type=date outlined dense')
+                to_date_input.value = today.strftime('%Y-%m-%d')
+                to_date_input.on_value_change(lambda _: apply_filters())
 
-            ui.button('Reset', on_click=lambda: reset_filters()).props('flat')
+            async def delete_selected():
+                selected = await grid.get_selected_rows()
+                if not selected:
+                    ui.notify('Select at least one transaction.', type='warning')
+                    return
+
+                count = len(selected)
+                with ui.dialog() as dialog, ui.card().classes('p-4'):
+                    ui.label(f'Delete {count} selected transactions?').classes('text-lg font-bold')
+                    ui.label('This action cannot be undone.').classes('text-gray-600 mb-4')
+                    with ui.row().classes('w-full justify-end gap-2 mt-4'):
+                        ui.button('Cancel', on_click=lambda: dialog.submit(False)).props('flat')
+                        ui.button('Delete', on_click=lambda: dialog.submit(True)).props('color=red')
+
+                if not await dialog:
+                    return
+
+                ids = [int(row['id']) for row in selected if row.get('id')]
+                if not ids:
+                    ui.notify('No valid rows selected.', type='warning')
+                    return
+
+                db = next(get_db())
+                try:
+                    db.query(Expense).filter(Expense.id.in_(ids)).delete(synchronize_session=False)
+                    db.commit()
+                finally:
+                    db.close()
+
+                ui.notify(f'Deleted {len(ids)} transactions.', type='positive')
+                load_page(current_page)
+
+            with ui.row().classes('w-full gap-3 items-center flex-wrap'):
+                ui.button('Reset', on_click=lambda: reset_filters()).props('flat')
+                ui.button('Delete Selected', on_click=delete_selected, icon='delete') \
+                    .props('outline color=red')
 
         # Scrollable Data Area
         with ui.element('div').classes('w-full max-h-[60vh] overflow-y-auto'):
@@ -211,6 +248,8 @@ def history_page():
             with ui.element('div').classes('w-full desktop-only'):
                 grid = ui.aggrid({
                     'columnDefs': [
+                        {'headerName': '', 'checkboxSelection': True, 'headerCheckboxSelection': True, 'width': 40,
+                         'pinned': 'left', 'sortable': False, 'filter': False, 'resizable': False},
                         {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True, 'width': 100},
                         {'headerName': 'Type', 'field': 'type', 'sortable': True, 'filter': True, 'editable': True,
                          'cellEditor': 'agSelectCellEditor',
@@ -244,12 +283,15 @@ def history_page():
                     'rowData': [],
                     'pagination': False,
                     'domLayout': 'autoHeight',
+                    'rowSelection': 'multiple',
+                    'rowMultiSelectWithClick': True,
+                    'suppressRowClickSelection': True,
                     'defaultColDef': {
                         'resizable': True,
                         'sortable': True,
                         'filter': True
                     }
-                }, html_columns=[6]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
+                }, html_columns=[7]).classes('w-full shadow-sm').on('cellValueChanged', handle_cell_value_change)
                 
                 async def handle_cell_clicked(e):
                     if e.args['colId'] == 'actions':
@@ -268,10 +310,11 @@ def history_page():
                 mobile_list = ui.column().classes('w-full gap-4')
 
         # Pagination Controls
-        with ui.row().classes('w-full justify-center items-center gap-3 mt-2 flex-wrap'):
-            prev_btn = ui.button('Prev', on_click=lambda: load_page(current_page - 1)).props('outlined')
-            page_label = ui.label('Page 1').classes('text-gray-600 min-w-[140px] text-center')
-            next_btn = ui.button('Next', on_click=lambda: load_page(current_page + 1)).props('outlined')
+        with ui.column().classes('w-full items-center gap-1 mt-0'):
+            with ui.row().classes('items-center gap-2 flex-nowrap'):
+                prev_btn = ui.button('Prev', on_click=lambda: load_page(current_page - 1)).props('outlined')
+                next_btn = ui.button('Next', on_click=lambda: load_page(current_page + 1)).props('outlined')
+            page_label = ui.label('Page 1').classes('text-gray-600 text-center')
 
         def reset_filters():
             search_input.value = ''

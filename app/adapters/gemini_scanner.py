@@ -14,7 +14,7 @@ class GeminiScanner(ReceiptScanner):
         img = PIL.Image.open(image_path)
 
         response = self.client.models.generate_content(
-            model='gemini-1.5-flash',
+            model=settings.GEMINI_MODEL,
             contents=[RECEIPT_ANALYSIS_PROMPT, img]
         )
         

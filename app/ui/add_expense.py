@@ -1,21 +1,29 @@
 from nicegui import ui
 from datetime import date, datetime
+from decimal import Decimal
 from app.core.database import get_db
 from app.services.expense_service import ExpenseService
 from app.services.receipt_service import ReceiptService
+from app.services.bank_ai_service import map_bank_categories, apply_recurring_mappings_to_entries
+from app.db.models import Expense
 from app.db.schemas import ExpenseCreate
-from app.core.config import settings
+from app.core.config import settings, USER_SETTINGS_PATH
 from app.ui.layout import theme, BREAKPOINT
 from app.utils.logger import get_logger
+from app.utils.bank_csv import parse_easybank_csv
 import io
 import os
 import asyncio
+import hashlib
+import json
 
 # Configure logging
 logger = get_logger(__name__)
 
 def add_expense_page():
     theme('add_expense')
+
+    bank_import_history_path = os.path.join('app', 'data', 'bank_import_history.json')
     
     # --- Custom CSS ---
     
@@ -77,6 +85,13 @@ def add_expense_page():
             }
         }
 
+        /* Banking table action styling */
+        .bank-table td[data-col="actions"] {
+            color: #2563eb !important;
+            font-weight: 600 !important;
+            cursor: pointer !important;
+        }
+
     ''')
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
@@ -117,6 +132,7 @@ def add_expense_page():
         with ui.tabs().classes('w-full text-blue-600').props('align="left"') as tabs:
             ai_tab = ui.tab('AI Upload')
             manual_tab = ui.tab('Manual Entry')
+            banking_tab = ui.tab('Banking Upload')
             
         with ui.tab_panels(tabs, value=ai_tab).classes('w-full bg-transparent'):
             
@@ -376,3 +392,571 @@ def add_expense_page():
                             ui.notify(f'Error: {str(e)}', type='negative')
 
                     ui.button('Save Transaction', on_click=save_manual, icon='save').classes('mt-6 bg-blue-600 text-white w-full')
+
+            # --- BANKING TAB ---
+            with ui.tab_panel(banking_tab).classes('p-0'):
+                with ui.card().classes('w-full p-6 shadow-sm'):
+                    with ui.row().classes('w-full items-center justify-between sticky top-0 z-20 bg-white dark:bg-slate-900 py-1 mb-2'):
+                        ui.label('Banking Upload (Easybank CSV)').classes('text-lg font-bold text-gray-700')
+                        options_btn = ui.button('Options', icon='tune').props('outline color=blue')
+                        with ui.menu().props('anchor="bottom end" self="top end"') as options_menu:
+                            with ui.column().classes('p-3 gap-3 min-w-[260px]'):
+                                ui.label('Import Options').classes('text-sm font-semibold text-gray-700')
+                                skip_duplicates_toggle = ui.toggle(['Skip duplicates', 'Import all'], value='Skip duplicates') \
+                                    .props('toggle-color=blue').classes('w-full')
+                                ai_mapping_toggle = ui.toggle(['AI Mapping On', 'AI Mapping Off'], value='AI Mapping On') \
+                                    .props('toggle-color=blue').classes('w-full')
+                                ui.button('Recurring Payments/Gehalt', icon='rule', on_click=lambda: recurring_dialog.open()) \
+                                    .props('flat color=blue').classes('justify-start')
+                                ui.button('Uploaded CSVs', icon='manage_history', on_click=lambda: uploaded_csvs_dialog.open()) \
+                                    .props('flat color=blue').classes('justify-start')
+                        options_btn.on('click', options_menu.open)
+
+                    ui.label('Upload the Easybank Kontoauszug CSV to import all transactions from a month.').classes('text-sm text-gray-600 dark:text-gray-300 mb-2')
+
+                    bank_state = {
+                        'entries': [],
+                        'csv_hash': None,
+                        'duplicate_csv': False,
+                        'allow_reimport': False,
+                        'recurring_mappings': list(settings.BANK_RECURRING_MAPPINGS or []),
+                    }
+
+                    async def ask_overwrite_confirmation() -> bool:
+                        with ui.dialog().props('persistent no-esc-dismiss no-backdrop-dismiss') as dialog, ui.card().classes('p-4 max-w-md'):
+                            ui.label('This CSV was already uploaded. OVERWRITE?').classes('text-lg font-bold')
+                            ui.label('Use "Yes" to reimport this CSV anyway.').classes('text-sm text-gray-600 mb-2')
+                            with ui.row().classes('w-full justify-end gap-2 mt-2'):
+                                ui.button('No', on_click=lambda: dialog.submit(False)).props('flat autofocus')
+                                ui.button('Yes', on_click=lambda: dialog.submit(True)).classes('bg-blue-600 text-white')
+                        return bool(await dialog)
+
+                    def persist_recurring_mappings():
+                        try:
+                            os.makedirs(os.path.dirname(USER_SETTINGS_PATH), exist_ok=True)
+                            data = {}
+                            if os.path.exists(USER_SETTINGS_PATH):
+                                with open(USER_SETTINGS_PATH, 'r') as f:
+                                    data = json.load(f)
+                            data['BANK_RECURRING_MAPPINGS'] = bank_state['recurring_mappings']
+                            with open(USER_SETTINGS_PATH, 'w') as f:
+                                json.dump(data, f, ensure_ascii=False, indent=2)
+                            settings.BANK_RECURRING_MAPPINGS = bank_state['recurring_mappings']
+                        except Exception as exc:
+                            logger.error(f"Failed to save recurring mappings: {exc}")
+                            ui.notify(f'Failed to save recurring mappings: {exc}', type='negative')
+
+                    def remove_recurring_rule(index: int):
+                        if 0 <= index < len(bank_state['recurring_mappings']):
+                            bank_state['recurring_mappings'].pop(index)
+                            persist_recurring_mappings()
+                            ui.notify('Recurring mapping removed.', type='positive')
+                            render_recurring_rules()
+
+                    with ui.dialog() as recurring_dialog, ui.card().classes('w-full max-w-2xl p-4'):
+                        ui.label('Recurring Payments / Gehalt Mapping').classes('text-lg font-bold text-gray-800')
+                        ui.label('Rules here override AI: if description contains text, force category.').classes('text-sm text-gray-500')
+
+                        recurring_rules_container = ui.column().classes('w-full gap-2 mt-2')
+                        recurring_category_options = sorted(set(settings.EXPENSE_CATEGORIES + settings.INCOME_CATEGORIES))
+
+                        def render_recurring_rules():
+                            recurring_rules_container.clear()
+                            with recurring_rules_container:
+                                if not bank_state['recurring_mappings']:
+                                    ui.label('No recurring mapping rules yet.').classes('text-sm text-gray-500')
+                                for idx, rule in enumerate(bank_state['recurring_mappings']):
+                                    with ui.row().classes('w-full items-center gap-2'):
+                                        ui.label(f"contains: {rule.get('contains', '')}").classes('text-sm flex-1')
+                                        ui.label(f"category: {rule.get('category', '')}").classes('text-sm flex-1')
+                                        ui.button(icon='delete', on_click=lambda _, i=idx: remove_recurring_rule(i)) \
+                                            .props('flat round dense color=red')
+
+                        recurring_contains_input = ui.input('Description contains').classes('w-full')
+                        recurring_category_select = ui.select(
+                            options=recurring_category_options,
+                            label='Category',
+                            value=(recurring_category_options[0] if recurring_category_options else None),
+                        ).classes('w-full')
+
+                        def add_recurring_rule():
+                            contains = (recurring_contains_input.value or '').strip()
+                            category = (recurring_category_select.value or '').strip()
+                            if not contains or not category:
+                                ui.notify('Please fill both fields.', type='warning')
+                                return
+                            bank_state['recurring_mappings'].append({'contains': contains, 'category': category})
+                            persist_recurring_mappings()
+                            recurring_contains_input.set_value('')
+                            if recurring_category_options:
+                                recurring_category_select.set_value(recurring_category_options[0])
+                            ui.notify('Recurring mapping added.', type='positive')
+                            render_recurring_rules()
+
+                        with ui.row().classes('w-full justify-end gap-2 mt-2'):
+                            ui.button('Close', on_click=recurring_dialog.close).props('flat')
+                            ui.button('Add Rule', on_click=add_recurring_rule).classes('bg-blue-600 text-white')
+
+                        render_recurring_rules()
+
+                    def load_import_history_payload():
+                        try:
+                            if os.path.exists(bank_import_history_path):
+                                with open(bank_import_history_path, 'r') as file_handle:
+                                    data = json.load(file_handle)
+                                hashes = set(data.get('hashes', []))
+                                meta = data.get('meta', {}) if isinstance(data.get('meta', {}), dict) else {}
+                                return hashes, meta
+                        except Exception as exc:
+                            logger.warning(f"Failed to load bank import history: {exc}")
+                        return set(), {}
+
+                    def load_import_history():
+                        hashes, _ = load_import_history_payload()
+                        return hashes
+
+                    def save_import_history(hashes, meta=None):
+                        try:
+                            os.makedirs(os.path.dirname(bank_import_history_path), exist_ok=True)
+                            if meta is None:
+                                _, existing_meta = load_import_history_payload()
+                                meta = existing_meta
+                            # Keep metadata only for currently stored hashes
+                            meta = {h: meta.get(h, {}) for h in hashes}
+                            with open(bank_import_history_path, 'w') as file_handle:
+                                json.dump({'hashes': sorted(hashes), 'meta': meta}, file_handle)
+                        except Exception as exc:
+                            logger.warning(f"Failed to save bank import history: {exc}")
+
+                    def derive_import_months(entries):
+                        months = sorted({entry.date.strftime('%Y-%m') for entry in entries if getattr(entry, 'date', None)})
+                        return months
+
+                    def compute_csv_hash(content_bytes: bytes) -> str:
+                        return hashlib.sha256(content_bytes).hexdigest()
+
+                    with ui.dialog() as uploaded_csvs_dialog, ui.card().classes('w-full max-w-2xl p-4'):
+                        ui.label('Uploaded CSV Hashes').classes('text-lg font-bold text-gray-800')
+                        ui.label('Delete hashes to allow reupload without overwrite notice.').classes('text-sm text-gray-500')
+
+                        uploaded_hashes_container = ui.column().classes('w-full gap-2 mt-2')
+
+                        def render_uploaded_hashes():
+                            uploaded_hashes_container.clear()
+                            hashes, meta = load_import_history_payload()
+                            hashes = sorted(hashes)
+                            with uploaded_hashes_container:
+                                if not hashes:
+                                    ui.label('No uploaded CSV hashes saved.').classes('text-sm text-gray-500')
+                                for csv_hash in hashes:
+                                    csv_meta = meta.get(csv_hash, {}) if isinstance(meta, dict) else {}
+                                    months = csv_meta.get('months', [])
+                                    imported_at = csv_meta.get('imported_at', '')
+                                    months_label = ', '.join(months) if months else 'unknown month'
+                                    with ui.row().classes('w-full items-center gap-2'):
+                                        with ui.column().classes('flex-1 gap-0'):
+                                            ui.label(csv_hash).classes('text-xs break-all')
+                                            ui.label(f"months: {months_label} | imported: {imported_at or 'unknown'}").classes('text-[11px] text-gray-500')
+                                        ui.button(icon='delete', on_click=lambda _, h=csv_hash: remove_uploaded_hash(h)) \
+                                            .props('flat round dense color=red')
+
+                        def remove_uploaded_hash(csv_hash: str):
+                            hashes, meta = load_import_history_payload()
+                            if csv_hash in hashes:
+                                hashes.remove(csv_hash)
+                                if csv_hash in meta:
+                                    meta.pop(csv_hash, None)
+                                save_import_history(hashes, meta)
+                                ui.notify('Uploaded CSV hash removed.', type='positive')
+                                render_uploaded_hashes()
+
+                        def clear_uploaded_hashes():
+                            save_import_history(set(), {})
+                            ui.notify('All uploaded CSV hashes removed.', type='positive')
+                            render_uploaded_hashes()
+
+                        with ui.row().classes('w-full justify-end gap-2 mt-2'):
+                            ui.button('Close', on_click=uploaded_csvs_dialog.close).props('flat')
+                            ui.button('Clear All', on_click=clear_uploaded_hashes).props('outline color=red')
+
+                        render_uploaded_hashes()
+
+                    async def handle_bank_upload(e):
+                        try:
+                            content = getattr(e, 'content', None)
+                            filename = getattr(e, 'name', None)
+
+                            if hasattr(e, 'file'):
+                                if not filename and hasattr(e.file, 'name'):
+                                    filename = e.file.name
+                                if content is None:
+                                    if hasattr(e.file, '_data'):
+                                        content = e.file._data
+                                    elif hasattr(e.file, 'read'):
+                                        file_data = await e.file.read()
+                                        content = file_data
+
+                            if content is None:
+                                ui.notify('Error: Upload content missing.', type='negative', timeout=5000)
+                                return
+
+                            csv_hash = compute_csv_hash(content)
+                            history = load_import_history()
+                            bank_state['csv_hash'] = csv_hash
+                            bank_state['duplicate_csv'] = csv_hash in history
+                            bank_state['allow_reimport'] = False
+
+                            if bank_state['duplicate_csv']:
+                                confirmed = await ask_overwrite_confirmation()
+                                if confirmed:
+                                    bank_state['allow_reimport'] = True
+                                    bank_state['duplicate_csv'] = False
+                                else:
+                                    bank_state['allow_reimport'] = False
+
+                            entries, errors = parse_easybank_csv(content)
+                            apply_recurring_mappings_to_entries(entries)
+                            bank_state['entries'] = entries
+                            update_bank_table()
+
+                            if csv_hash in history and bank_state['allow_reimport']:
+                                ui.notify('Reimport enabled for this already uploaded CSV.', type='warning', timeout=7000)
+                            elif bank_state['duplicate_csv']:
+                                ui.notify('This CSV was already imported. Import is disabled.', type='warning', timeout=7000)
+                            elif errors:
+                                ui.notify(f"Loaded with {len(errors)} row errors.", type='warning', timeout=7000)
+                            else:
+                                ui.notify('CSV loaded successfully.', type='positive', timeout=5000)
+
+                        except Exception as err:
+                            ui.notify(f'Error reading CSV: {err}', type='negative', timeout=7000)
+                        finally:
+                            bank_uploader.reset()
+
+                    bank_uploader = ui.upload(
+                        on_upload=handle_bank_upload,
+                        label='Drop CSV here',
+                        auto_upload=True,
+                        multiple=False,
+                    ).props('color=bg-blue-600 accept=".csv"').classes('w-full mt-4')
+
+                    summary_label = ui.label('No data loaded yet.').classes('text-sm text-gray-500 mt-4')
+
+                    with ui.element('div').classes('w-full overflow-x-auto mt-4'):
+                        bank_table = ui.aggrid({
+                            'columnDefs': [
+                                {'headerName': 'Date', 'field': 'date', 'editable': True, 'width': 120},
+                                {'headerName': 'Description', 'field': 'description', 'editable': True, 'width': 260},
+                                {
+                                    'headerName': 'Amount',
+                                    'field': 'amount',
+                                    'editable': True,
+                                    'width': 110,
+                                    'valueFormatter': 'Number(value).toFixed(2)',
+                                },
+                                {
+                                    'headerName': 'Currency',
+                                    'field': 'currency',
+                                    'editable': True,
+                                    'cellEditor': 'agSelectCellEditor',
+                                    'cellEditorParams': {'values': settings.CURRENCIES},
+                                    'width': 110,
+                                },
+                                {
+                                    'headerName': 'Type',
+                                    'field': 'type',
+                                    'editable': True,
+                                    'cellEditor': 'agSelectCellEditor',
+                                    'cellEditorParams': {'values': ['expense', 'income']},
+                                    'width': 110,
+                                },
+                                {
+                                    'headerName': 'Category',
+                                    'field': 'category',
+                                    'editable': True,
+                                    'width': 170,
+                                    'cellClassRules': {
+                                        'text-red-600 font-bold': "data.ai_preview && data.ai_preview !== ''",
+                                    },
+                                    ':cellEditorSelector': f"""(params) => {{
+                                        if (params.data.type === 'income') {{
+                                            return {{
+                                                component: 'agSelectCellEditor',
+                                                params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                                            }};
+                                        }}
+                                        return {{
+                                            component: 'agSelectCellEditor',
+                                            params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
+                                        }};
+                                    }}"""
+                                },
+                                {
+                                    'headerName': 'AI Preview',
+                                    'field': 'ai_preview',
+                                    'editable': False,
+                                    'width': 170,
+                                    'cellClassRules': {
+                                        'text-green-700 font-bold': "data.ai_preview && data.ai_preview !== ''",
+                                    },
+                                },
+                                {'headerName': 'Duplicate', 'field': 'duplicate', 'editable': False, 'width': 110},
+                            ],
+                            'rowData': [],
+                            'pagination': False,
+                            'domLayout': 'normal',
+                            'defaultColDef': {
+                                'resizable': True,
+                                'sortable': True,
+                            },
+                        }).classes('min-w-[980px] shadow-sm h-[420px] relative z-0')
+                    ai_state = {'proposed': {}}
+
+                    def refresh_duplicate_flags():
+                        if not bank_state['entries']:
+                            return
+
+                        db = next(get_db())
+                        for entry in bank_state['entries']:
+                            exists = db.query(Expense).filter(
+                                Expense.date == entry.date,
+                                Expense.type == entry.entry_type,
+                                Expense.category == entry.category,
+                                Expense.description == entry.description,
+                                Expense.amount == entry.amount,
+                                Expense.currency == entry.currency,
+                            ).first()
+                            entry.is_duplicate = bool(exists)
+
+                    def get_entry_by_id(row_id: int):
+                        if not row_id:
+                            return None
+                        idx = int(row_id) - 1
+                        if idx < 0 or idx >= len(bank_state['entries']):
+                            return None
+                        return bank_state['entries'][idx]
+
+                    async def handle_bank_cell_value_change(e):
+                        row_id = int(e.args['data']['id'])
+                        field = e.args['colId']
+                        new_value = e.args['newValue']
+
+                        entry = get_entry_by_id(row_id)
+                        if not entry:
+                            return
+
+                        try:
+                            if field == 'date':
+                                entry.date = datetime.strptime(str(new_value), '%Y-%m-%d').date()
+                            elif field == 'amount':
+                                entry.amount = Decimal(str(new_value).replace(',', '.'))
+                            elif field == 'description':
+                                entry.description = str(new_value or '').strip()
+                            elif field == 'currency':
+                                entry.currency = str(new_value)
+                            elif field == 'type':
+                                entry.entry_type = str(new_value)
+                                allowed = settings.INCOME_CATEGORIES if entry.entry_type == 'income' else settings.EXPENSE_CATEGORIES
+                                if entry.category not in allowed:
+                                    entry.category = allowed[0]
+                            elif field == 'category':
+                                entry.category = str(new_value)
+                            else:
+                                return
+
+                            ai_state['proposed'].pop(row_id, None)
+                            update_bank_table()
+                            # Keep the edited row in view after re-render to avoid jumping to top.
+                            bank_table.run_grid_method('ensureIndexVisible', row_id - 1, 'middle')
+                        except Exception as exc:
+                            ui.notify(f'Invalid value: {exc}', type='negative')
+                            update_bank_table()
+                            bank_table.run_grid_method('ensureIndexVisible', row_id - 1, 'middle')
+
+                    def update_bank_table():
+                        refresh_duplicate_flags()
+                        rows = []
+                        total_income = 0
+                        total_expense = 0
+                        for idx, entry in enumerate(bank_state['entries'], start=1):
+                            amount_value = float(entry.amount)
+                            if entry.entry_type == 'income':
+                                total_income += amount_value
+                            else:
+                                total_expense += amount_value
+                            proposed = ai_state['proposed'].get(idx)
+                            rows.append({
+                                'id': idx,
+                                'date': entry.date.strftime('%Y-%m-%d'),
+                                'description': entry.description,
+                                'amount': amount_value,
+                                'currency': entry.currency,
+                                'type': entry.entry_type,
+                                'category': entry.category,
+                                'ai_preview': proposed if proposed and proposed != entry.category else '',
+                                'duplicate': 'Yes' if getattr(entry, 'is_duplicate', False) else '',
+                            })
+
+                        bank_table.options['rowData'] = rows
+                        bank_table.update()
+                        duplicate_notice = ' (CSV already imported)' if bank_state.get('duplicate_csv') else ''
+                        summary_label.text = (
+                            f"Loaded {len(rows)} transactions{duplicate_notice}. "
+                            f"Income: {total_income:.2f} EUR, "
+                            f"Expense: {total_expense:.2f} EUR"
+                        )
+                        import_btn.disable() if bank_state.get('duplicate_csv') else import_btn.enable()
+
+                    bank_table.on('cellValueChanged', handle_bank_cell_value_change)
+
+                    async def generate_ai_preview():
+                        if not bank_state['entries']:
+                            ui.notify('No transactions loaded.', type='warning')
+                            return
+
+                        ui.notify(f"Generating AI preview via {settings.AI_PROVIDER}...", type='info', timeout=2500)
+                        ai_preview_btn.disable()
+                        ai_preview_btn.props('loading')
+
+                        try:
+                            mapping = await asyncio.to_thread(map_bank_categories, bank_state['entries'])
+                            ai_state['proposed'] = {}
+                            changed = 0
+                            for idx, entry in enumerate(bank_state['entries'], start=1):
+                                proposed = mapping.get(idx)
+                                if proposed and proposed != entry.category:
+                                    changed += 1
+                                    ai_state['proposed'][idx] = proposed
+
+                            update_bank_table()
+                            if changed > 0:
+                                apply_ai_btn.enable()
+                                ui.notify(f'AI preview ready: {changed} proposed changes.', type='positive')
+                            else:
+                                apply_ai_btn.disable()
+                                ui.notify('AI preview found no category changes.', type='warning')
+                        except Exception as exc:
+                            logger.error(f"AI mapping failed: {exc}")
+                            ui.notify(f'AI mapping failed: {exc}', type='negative')
+                        finally:
+                            ai_preview_btn.enable()
+                            ai_preview_btn.props(remove='loading')
+
+                    def apply_ai_mapping():
+                        if not ai_state['proposed']:
+                            ui.notify('No AI preview available.', type='warning')
+                            return
+
+                        updated = 0
+                        for idx, entry in enumerate(bank_state['entries'], start=1):
+                            proposed = ai_state['proposed'].get(idx)
+                            if proposed and proposed != entry.category:
+                                entry.category = proposed
+                                updated += 1
+
+                        ai_state['proposed'] = {}
+                        apply_ai_btn.disable()
+                        update_bank_table()
+                        ui.notify(f'Applied {updated} AI category changes.', type='positive')
+
+                    def update_mapping_visibility():
+                        ai_enabled = ai_mapping_toggle.value == 'AI Mapping On'
+                        if ai_enabled:
+                            ai_preview_btn.classes(remove='hidden')
+                            apply_ai_btn.classes(remove='hidden')
+                        else:
+                            ai_preview_btn.classes(add='hidden')
+                            apply_ai_btn.classes(add='hidden')
+
+                    ai_mapping_toggle.on_value_change(lambda _: update_mapping_visibility())
+
+                    def import_bank_entries():
+                        if not bank_state['entries']:
+                            ui.notify('No transactions loaded.', type='warning')
+                            return
+
+                        if bank_state.get('duplicate_csv') and not bank_state.get('allow_reimport'):
+                            ui.notify('This CSV was already imported.', type='warning')
+                            return
+
+                        history = load_import_history()
+                        if bank_state.get('csv_hash') in history and not bank_state.get('allow_reimport'):
+                            ui.notify('This CSV was already imported.', type='warning')
+                            bank_state['duplicate_csv'] = True
+                            update_bank_table()
+                            return
+
+                        saved_count = 0
+                        skipped_duplicates = 0
+                        errors = 0
+                        db = next(get_db())
+                        for entry in bank_state['entries']:
+                            try:
+                                if skip_duplicates_toggle.value == 'Skip duplicates':
+                                    exists = db.query(Expense).filter(
+                                        Expense.date == entry.date,
+                                        Expense.type == entry.entry_type,
+                                        Expense.category == entry.category,
+                                        Expense.description == entry.description,
+                                        Expense.amount == entry.amount,
+                                        Expense.currency == entry.currency,
+                                    ).first()
+                                    if exists:
+                                        skipped_duplicates += 1
+                                        continue
+
+                                expense_data = ExpenseCreate(
+                                    date=entry.date,
+                                    type=entry.entry_type,
+                                    category=entry.category,
+                                    description=entry.description,
+                                    amount=entry.amount,
+                                    currency=entry.currency,
+                                )
+                                ExpenseService.create_expense(db, expense_data)
+                                saved_count += 1
+                            except Exception as exc:
+                                errors += 1
+                                logger.error(f"Bank CSV import failed: {exc}")
+
+                        ui.notify(f'Imported {saved_count} transactions.', type='positive')
+                        if skipped_duplicates:
+                            ui.notify(f'Skipped {skipped_duplicates} duplicate rows.', type='warning')
+                        if errors:
+                            ui.notify(f'Failed to import {errors} rows.', type='warning')
+
+                        if bank_state.get('csv_hash'):
+                            history.add(bank_state['csv_hash'])
+                            _, history_meta = load_import_history_payload()
+                            history_meta[bank_state['csv_hash']] = {
+                                'months': derive_import_months(bank_state['entries']),
+                                'imported_at': datetime.now().strftime('%Y-%m-%d %H:%M:%S'),
+                            }
+                            save_import_history(history, history_meta)
+
+                        bank_state['entries'] = []
+                        bank_state['csv_hash'] = None
+                        bank_state['duplicate_csv'] = False
+                        bank_state['allow_reimport'] = False
+                        update_bank_table()
+
+                    with ui.row().classes('w-full gap-3 mt-4 items-center flex-wrap relative z-10'):
+                        ai_preview_btn = ui.button('Generate AI Preview', on_click=generate_ai_preview, icon='auto_fix_high') \
+                            .classes('bg-blue-600 text-white')
+                        apply_ai_btn = ui.button('Apply AI Changes', on_click=apply_ai_mapping) \
+                            .classes('bg-green-600 text-white')
+                        apply_ai_btn.disable()
+                        import_btn = ui.button('Import All', on_click=import_bank_entries, icon='upload') \
+                            .classes('bg-green-600 text-white')
+                        ui.button(
+                            'Clear',
+                            on_click=lambda: (
+                                bank_state.update({'entries': [], 'csv_hash': None, 'duplicate_csv': False, 'allow_reimport': False}),
+                                ai_state.update({'proposed': {}}),
+                                update_bank_table(),
+                            )
+                        ) \
+                            .props('outline').classes('text-gray-600')
+
+                    update_mapping_visibility()
+

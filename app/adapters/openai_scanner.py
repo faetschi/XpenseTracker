@@ -11,7 +11,7 @@ import mimetypes
 class OpenAIScanner(ReceiptScanner):
     def __init__(self):
         self.client = OpenAI(api_key=settings.OPENAI_API_KEY)
-        self.model = "gpt-4o" # Or gpt-4-turbo, capable of vision
+        self.model = settings.OPENAI_MODEL
 
     def _encode_image(self, image_path):
         with open(image_path, "rb") as image_file:
