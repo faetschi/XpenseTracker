@@ -404,8 +404,6 @@ def add_expense_page():
                                 ui.label('Import Options').classes('text-sm font-semibold text-gray-700')
                                 skip_duplicates_toggle = ui.toggle(['Skip duplicates', 'Import all'], value='Skip duplicates') \
                                     .props('toggle-color=blue').classes('w-full')
-                                ai_mapping_toggle = ui.toggle(['AI Mapping On', 'AI Mapping Off'], value='AI Mapping On') \
-                                    .props('toggle-color=blue').classes('w-full')
                                 ui.button('Recurring Payments/Gehalt', icon='rule', on_click=lambda: recurring_dialog.open()) \
                                     .props('flat color=blue').classes('justify-start')
                                 ui.button('Uploaded CSVs', icon='manage_history', on_click=lambda: uploaded_csvs_dialog.open()) \
@@ -614,7 +612,7 @@ def add_expense_page():
                                 else:
                                     bank_state['allow_reimport'] = False
 
-                            entries, errors = parse_easybank_csv(content)
+                            entries, errors, transfer_count = parse_easybank_csv(content)
                             apply_recurring_mappings_to_entries(entries)
                             bank_state['entries'] = entries
                             update_bank_table()
@@ -627,6 +625,31 @@ def add_expense_page():
                                 ui.notify(f"Loaded with {len(errors)} row errors.", type='warning', timeout=7000)
                             else:
                                 ui.notify('CSV loaded successfully.', type='positive', timeout=5000)
+                            if transfer_count:
+                                ui.notify(f'Detected {transfer_count} account transfer(s) — they will be imported as type "transfer".', type='info', timeout=7000)
+
+                            if settings.BANK_AI_AUTO_MAPPING:
+                                ai_preview_btn.disable()
+                                ai_preview_btn.props('loading')
+                                try:
+                                    mapping = await asyncio.to_thread(map_bank_categories, bank_state['entries'])
+                                    changed = 0
+                                    for idx, entry in enumerate(bank_state['entries'], start=1):
+                                        proposed = mapping.get(idx)
+                                        if proposed and proposed != entry.category:
+                                            entry.category = proposed
+                                            changed += 1
+                                    update_bank_table()
+                                    if changed > 0:
+                                        ui.notify(f'AI categories auto-applied: {changed} changes.', type='positive')
+                                    else:
+                                        ui.notify('AI found no category changes.', type='warning')
+                                except Exception as exc:
+                                    logger.error(f"Auto AI mapping failed: {exc}")
+                                    ui.notify(f'Auto AI mapping failed: {exc}', type='negative')
+                                finally:
+                                    ai_preview_btn.enable()
+                                    ai_preview_btn.props(remove='loading')
 
                         except Exception as err:
                             ui.notify(f'Error reading CSV: {err}', type='negative', timeout=7000)
@@ -667,7 +690,7 @@ def add_expense_page():
                                     'field': 'type',
                                     'editable': True,
                                     'cellEditor': 'agSelectCellEditor',
-                                    'cellEditorParams': {'values': ['expense', 'income']},
+                                    'cellEditorParams': {'values': ['expense', 'income', 'transfer']},
                                     'width': 110,
                                 },
                                 {
@@ -677,12 +700,19 @@ def add_expense_page():
                                     'width': 170,
                                     'cellClassRules': {
                                         'text-red-600 font-bold': "data.ai_preview && data.ai_preview !== ''",
+                                        'text-blue-600': "data.type === 'transfer'",
                                     },
                                     ':cellEditorSelector': f"""(params) => {{
                                         if (params.data.type === 'income') {{
                                             return {{
                                                 component: 'agSelectCellEditor',
                                                 params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                                            }};
+                                        }}
+                                        if (params.data.type === 'transfer') {{
+                                            return {{
+                                                component: 'agSelectCellEditor',
+                                                params: {{ values: {json.dumps(sorted(set(settings.INCOME_CATEGORIES + settings.EXPENSE_CATEGORIES)))} }}
                                             }};
                                         }}
                                         return {{
@@ -721,7 +751,6 @@ def add_expense_page():
                             exists = db.query(Expense).filter(
                                 Expense.date == entry.date,
                                 Expense.type == entry.entry_type,
-                                Expense.category == entry.category,
                                 Expense.description == entry.description,
                                 Expense.amount == entry.amount,
                                 Expense.currency == entry.currency,
@@ -756,7 +785,10 @@ def add_expense_page():
                                 entry.currency = str(new_value)
                             elif field == 'type':
                                 entry.entry_type = str(new_value)
-                                allowed = settings.INCOME_CATEGORIES if entry.entry_type == 'income' else settings.EXPENSE_CATEGORIES
+                                if entry.entry_type == 'transfer':
+                                    allowed = sorted(set(settings.INCOME_CATEGORIES + settings.EXPENSE_CATEGORIES))
+                                else:
+                                    allowed = settings.INCOME_CATEGORIES if entry.entry_type == 'income' else settings.EXPENSE_CATEGORIES
                                 if entry.category not in allowed:
                                     entry.category = allowed[0]
                             elif field == 'category':
@@ -778,10 +810,13 @@ def add_expense_page():
                         rows = []
                         total_income = 0
                         total_expense = 0
+                        total_transfers = 0
                         for idx, entry in enumerate(bank_state['entries'], start=1):
                             amount_value = float(entry.amount)
                             if entry.entry_type == 'income':
                                 total_income += amount_value
+                            elif entry.entry_type == 'transfer':
+                                total_transfers += amount_value
                             else:
                                 total_expense += amount_value
                             proposed = ai_state['proposed'].get(idx)
@@ -800,11 +835,14 @@ def add_expense_page():
                         bank_table.options['rowData'] = rows
                         bank_table.update()
                         duplicate_notice = ' (CSV already imported)' if bank_state.get('duplicate_csv') else ''
-                        summary_label.text = (
-                            f"Loaded {len(rows)} transactions{duplicate_notice}. "
-                            f"Income: {total_income:.2f} EUR, "
-                            f"Expense: {total_expense:.2f} EUR"
-                        )
+                        summary_parts = [
+                            f"Loaded {len(rows)} transactions{duplicate_notice}.",
+                            f"Income: {total_income:.2f} EUR",
+                            f"Expense: {total_expense:.2f} EUR",
+                        ]
+                        if total_transfers:
+                            summary_parts.append(f"Transfers: {total_transfers:.2f} EUR")
+                        summary_label.text = " ".join(summary_parts)
                         import_btn.disable() if bank_state.get('duplicate_csv') else import_btn.enable()
 
                     bank_table.on('cellValueChanged', handle_bank_cell_value_change)
@@ -860,15 +898,12 @@ def add_expense_page():
                         ui.notify(f'Applied {updated} AI category changes.', type='positive')
 
                     def update_mapping_visibility():
-                        ai_enabled = ai_mapping_toggle.value == 'AI Mapping On'
-                        if ai_enabled:
-                            ai_preview_btn.classes(remove='hidden')
-                            apply_ai_btn.classes(remove='hidden')
-                        else:
+                        if settings.BANK_AI_AUTO_MAPPING:
                             ai_preview_btn.classes(add='hidden')
                             apply_ai_btn.classes(add='hidden')
-
-                    ai_mapping_toggle.on_value_change(lambda _: update_mapping_visibility())
+                        else:
+                            ai_preview_btn.classes(remove='hidden')
+                            apply_ai_btn.classes(remove='hidden')
 
                     def import_bank_entries():
                         if not bank_state['entries']:
@@ -896,7 +931,6 @@ def add_expense_page():
                                     exists = db.query(Expense).filter(
                                         Expense.date == entry.date,
                                         Expense.type == entry.entry_type,
-                                        Expense.category == entry.category,
                                         Expense.description == entry.description,
                                         Expense.amount == entry.amount,
                                         Expense.currency == entry.currency,

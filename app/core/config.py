@@ -29,9 +29,9 @@ class Settings(BaseSettings):
     # App Constants
     EXPENSE_CATEGORIES: list[str] = [
         "Lebensmittel", "Restaurant", "Transport", "Fortgehen", "Rechnungen/Fixkosten", "Miete",
-        "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Sonstiges"
+        "Unterhaltung", "Gesundheit", "Reisen", "Shopping", "Geschenke", "Transfer", "Sonstiges"
     ]
-    INCOME_CATEGORIES: list[str] = ["Gehalt", "Geschenk", "Sonstiges"]
+    INCOME_CATEGORIES: list[str] = ["Gehalt", "Geschenk", "Transfer", "Sonstiges"]
     CURRENCIES: list[str] = ["EUR", "UNKNOWN"]
     
     # Dashboard Settings
@@ -59,6 +59,7 @@ class Settings(BaseSettings):
     # UI Settings
     DEFAULT_CURRENCY: str = "EUR"
     THEME_MODE: str = "light" # light, dark, auto
+    BANK_AI_AUTO_MAPPING: bool = False
 
     @property
     def DATABASE_URL(self) -> str:
