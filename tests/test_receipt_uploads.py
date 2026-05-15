@@ -21,21 +21,19 @@ def read_fixture(name):
 @pytest.mark.parametrize('bad_bytes', [b'notanimage', b'<html></html>'])
 def test_invalid_upload_rejected(bad_bytes):
     with pytest.raises(ValueError):
-        # pass raw bytes directly
-        pytest.run(asyncio=None) if False else None
         # call async function via asyncio.run
         import asyncio
         asyncio.run(ReceiptService.process_receipt(bad_bytes, 'test.txt'))
 
 def test_valid_jpeg_saved():
-    img_bytes = read_fixture('test.jpg')
+    img_bytes = read_fixture('billa_1.jpeg')
     import asyncio
-    result, path = asyncio.run(ReceiptService.process_receipt(io.BytesIO(img_bytes), 'test.jpg'))
+    result, path = asyncio.run(ReceiptService.process_receipt(io.BytesIO(img_bytes), 'billa_1.jpeg'))
     assert os.path.exists(path)
     assert path.endswith('.jpg') or path.endswith('.jpeg')
 
 def test_safe_filename_blocks_traversal():
-    img_bytes = read_fixture('test.jpg')
+    img_bytes = read_fixture('billa_1.jpeg')
     import asyncio
     result, path = asyncio.run(ReceiptService.process_receipt(io.BytesIO(img_bytes), '../evil.jpg'))
     assert os.path.exists(path)

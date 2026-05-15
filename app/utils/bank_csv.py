@@ -6,6 +6,12 @@ from typing import Iterable, List, Tuple
 
 from app.core.config import settings
 
+TRANSFER_KEYWORDS = {
+    "umbuchung", "übertrag", "eigene überweisung", "interne umbuchung",
+    "kontoübertrag", "transfer zwischen eigenen konten",
+    "fabian jelinek", "easybank", "dkb", "flatex",
+}
+
 
 @dataclass
 class BankCsvEntry:
@@ -40,7 +46,14 @@ def _normalize_description(raw_text: str) -> str:
     return collapsed
 
 
+def _is_transfer(description: str) -> bool:
+    lowered = description.lower()
+    return any(kw in lowered for kw in TRANSFER_KEYWORDS)
+
+
 def _infer_category(entry_type: str, description: str) -> str:
+    if entry_type == "transfer":
+        return "Transfer"
     lowered = description.lower()
     if entry_type == "income":
         if "gehalt" in lowered or "lohn" in lowered:
@@ -49,12 +62,13 @@ def _infer_category(entry_type: str, description: str) -> str:
     return settings.EXPENSE_CATEGORIES[0] if settings.EXPENSE_CATEGORIES else "Sonstiges"
 
 
-def parse_easybank_csv(content: bytes) -> Tuple[List[BankCsvEntry], List[str]]:
+def parse_easybank_csv(content: bytes) -> Tuple[List[BankCsvEntry], List[str], int]:
     text = _decode_csv_bytes(content)
     reader = csv.reader(text.splitlines(), delimiter=";")
 
     entries: List[BankCsvEntry] = []
     errors: List[str] = []
+    transfer_count = 0
 
     for idx, row in enumerate(reader, start=1):
         if len(row) < 6:
@@ -72,6 +86,11 @@ def parse_easybank_csv(content: bytes) -> Tuple[List[BankCsvEntry], List[str]]:
             currency = raw_currency.strip() or settings.DEFAULT_CURRENCY
             entry_type = "income" if amount > 0 else "expense"
             description = _normalize_description(raw_description)
+
+            if _is_transfer(description):
+                entry_type = "transfer"
+                transfer_count += 1
+
             category = _infer_category(entry_type, description)
 
             entries.append(
@@ -87,4 +106,4 @@ def parse_easybank_csv(content: bytes) -> Tuple[List[BankCsvEntry], List[str]]:
         except Exception as exc:
             errors.append(f"Row {idx}: {exc}")
 
-    return entries, errors
+    return entries, errors, transfer_count

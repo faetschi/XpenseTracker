@@ -47,7 +47,7 @@ def dashboard_page():
         initial_year = saved_year if isinstance(saved_year, int) and saved_year in year_options else current_year
         initial_month = saved_month if isinstance(saved_month, int) and 1 <= saved_month <= 12 else current_month
         initial_all_year = bool(saved_all_year)
-        last_month = initial_month
+        last_month = initial_month if initial_month is not None else current_month
 
         def persist_filters():
             app.storage.user['dashboard_filters'] = {
@@ -237,9 +237,18 @@ def dashboard_page():
                                                 ui.label(expense.category).classes('text-sm text-gray-800 truncate')
                                             
                                             # Amount
-                                            amount_class = 'text-green-600 font-bold' if getattr(expense, 'type', 'expense') == 'income' else 'text-red-600'
+                                            etype = getattr(expense, 'type', 'expense')
+                                            if etype == 'income':
+                                                amount_class = 'text-green-600 font-bold'
+                                                prefix = '+'
+                                            elif etype == 'transfer':
+                                                amount_class = 'text-blue-600 font-bold'
+                                                prefix = '↔'
+                                            else:
+                                                amount_class = 'text-red-600'
+                                                prefix = '-'
                                             ui.label(
-                                                f"{'+' if getattr(expense, 'type', 'expense') == 'income' else '-'}{format_currency(expense.amount_eur)}"
+                                                f"{prefix}{format_currency(expense.amount_eur)}"
                                             ).classes(f'text-lg font-semibold {amount_class} whitespace-nowrap')
                         else:
                             ui.label('No transactions yet.').classes('text-gray-400 italic')

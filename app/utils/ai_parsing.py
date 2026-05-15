@@ -40,4 +40,4 @@ def parse_ai_response(raw_response: str, image_path: str) -> ExpenseCreate:
     except Exception as e:
         print(f"Error parsing AI response: {e}")
         print(f"Raw response: {raw_response}")
-        raise e
+        raise

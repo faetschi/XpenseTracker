@@ -120,7 +120,7 @@ def history_page():
                     with ui.menu() as menu:
                         ui.date().bind_value(date_input)
                 
-                type_select = ui.select(['expense', 'income'], label='Type', value=expense.type).classes('w-full mb-2')
+                type_select = ui.select(['expense', 'income', 'transfer'], label='Type', value=expense.type).classes('w-full mb-2')
                 
                 category_options = settings.INCOME_CATEGORIES if expense.type == 'income' else settings.EXPENSE_CATEGORIES
                 category_select = ui.select(category_options, label='Category', value=expense.category).classes('w-full mb-2')
@@ -134,6 +134,11 @@ def history_page():
                         category_select.options = settings.INCOME_CATEGORIES
                         if category_select.value not in settings.INCOME_CATEGORIES:
                             category_select.value = settings.INCOME_CATEGORIES[0]
+                    elif type_select.value == 'transfer':
+                        all_cats = sorted(set(settings.INCOME_CATEGORIES + settings.EXPENSE_CATEGORIES))
+                        category_select.options = all_cats
+                        if category_select.value not in all_cats:
+                            category_select.value = all_cats[0]
                     else:
                         category_select.options = settings.EXPENSE_CATEGORIES
                         if category_select.value not in settings.EXPENSE_CATEGORIES:
@@ -190,7 +195,7 @@ def history_page():
                 search_input = ui.input('Search description/category') \
                     .props('outlined dense').classes('max-w-sm w-full') \
                     .on_value_change(lambda _: apply_filters())
-                type_select = ui.select(['All', 'expense', 'income'], value='All', label='Type') \
+                type_select = ui.select(['All', 'expense', 'income', 'transfer'], value='All', label='Type') \
                     .props('outlined dense options-dense behavior="menu"').classes('max-w-[160px] w-full') \
                     .on_value_change(lambda _: apply_filters())
                 category_select = ui.select(['All'] + all_categories, value='All', label='Category') \
@@ -253,27 +258,34 @@ def history_page():
                         {'headerName': 'Date', 'field': 'date', 'sortable': True, 'filter': True, 'editable': True, 'width': 100},
                         {'headerName': 'Type', 'field': 'type', 'sortable': True, 'filter': True, 'editable': True,
                          'cellEditor': 'agSelectCellEditor',
-                         'cellEditorParams': {'values': ['expense', 'income']}, 'width': 80},
+                         'cellEditorParams': {'values': ['expense', 'income', 'transfer']}, 'width': 100},
                         {'headerName': 'Category', 'field': 'category', 'sortable': True, 'filter': True, 'editable': True, 'width': 120,
-                         ':cellEditorSelector': f"""(params) => {{
-                             if (params.data.type === 'income') {{
-                                 return {{
-                                     component: 'agSelectCellEditor',
-                                     params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
-                                 }};
-                             }}
-                             return {{
-                                 component: 'agSelectCellEditor',
-                                 params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
-                             }};
-                         }}"""
+                          ':cellEditorSelector': f"""(params) => {{
+                              if (params.data.type === 'income') {{
+                                  return {{
+                                      component: 'agSelectCellEditor',
+                                      params: {{ values: {json.dumps(settings.INCOME_CATEGORIES)} }}
+                                  }};
+                              }}
+                              if (params.data.type === 'transfer') {{
+                                  return {{
+                                      component: 'agSelectCellEditor',
+                                      params: {{ values: {json.dumps(sorted(set(settings.INCOME_CATEGORIES + settings.EXPENSE_CATEGORIES)))} }}
+                                  }};
+                              }}
+                              return {{
+                                  component: 'agSelectCellEditor',
+                                  params: {{ values: {json.dumps(settings.EXPENSE_CATEGORIES)} }}
+                              }};
+                          }}"""
                         },
                         {'headerName': 'Description', 'field': 'description', 'sortable': True, 'filter': True, 'editable': True, 'width': 200},
                         {'headerName': 'Amount', 'field': 'amount', 'sortable': True, 'filter': 'agNumberColumnFilter', 'editable': True,
                          'valueFormatter': "Number(value).toFixed(2)", 'width': 100,
                          'cellClassRules': {
-                             'text-green-600 font-bold': 'data.type == "income"',
-                             'text-red-600': 'data.type == "expense"'
+                              'text-green-600 font-bold': 'data.type == "income"',
+                              'text-red-600': 'data.type == "expense"',
+                              'text-blue-600 font-bold': 'data.type == "transfer"',
                          }},
                         {'headerName': 'Currency', 'field': 'currency', 'sortable': True, 'filter': True, 'editable': True,
                          'cellEditor': 'agSelectCellEditor',
@@ -383,7 +395,7 @@ def history_page():
                     with ui.card().classes('w-full p-0 shadow-sm border border-gray-200 hover:shadow-md transition-shadow overflow-hidden cursor-pointer') \
                         .on('click', lambda _, e=expense: show_edit_dialog(e)):
                         # Color strip at the top based on type
-                        strip_color = 'bg-green-500' if expense.type == 'income' else 'bg-red-500'
+                        strip_color = 'bg-green-500' if expense.type == 'income' else ('bg-blue-500' if expense.type == 'transfer' else 'bg-red-500')
                         ui.element('div').classes(f'w-full h-1 {strip_color}')
                         
                         with ui.column().classes('w-full px-2 pb-2 pt-0 gap-1 m-0'):
@@ -400,9 +412,10 @@ def history_page():
                             with ui.row().classes('w-full items-center justify-between'):
                                 ui.label(expense.category).classes('text-base font-bold text-gray-900 leading-tight')
                                 
-                                amount_class = 'text-green-600' if expense.type == 'income' else 'text-red-600'
+                                amount_class = 'text-green-600' if expense.type == 'income' else ('text-blue-600' if expense.type == 'transfer' else 'text-red-600')
+                                prefix = '+' if expense.type == 'income' else ('↔' if expense.type == 'transfer' else '-')
                                 ui.label(
-                                    f"{'+' if expense.type == 'income' else '-'}{format_currency(expense.amount_eur)}"
+                                    f"{prefix}{format_currency(expense.amount_eur)}"
                                 ).classes(f'text-base font-black {amount_class}')
                             
                             # Description & Secondary Currency (if any)

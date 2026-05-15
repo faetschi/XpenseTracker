@@ -83,3 +83,47 @@
         border-radius: 12px !important;
     }
 }
+
+/* Responsive layout classes (moved from layout.py) */
+.desktop-only, .desktop-layout { display: none !important; }
+
+@media (min-width: 785px) {
+    .mobile-only, .mobile-layout { display: none !important; }
+    .desktop-only, .desktop-layout { display: block !important; }
+    .desktop-only.column, .desktop-layout.column { display: flex !important; }
+    .desktop-only.row, .desktop-layout.row { display: flex !important; }
+    .responsive-row { flex-direction: row !important; }
+    .responsive-grid-2 { display: grid !important; grid-template-columns: repeat(2, minmax(0, 1fr)) !important; }
+}
+
+@media (max-width: 784px) {
+    .desktop-only, .desktop-layout { display: none !important; }
+    .mobile-only, .mobile-layout { display: block !important; }
+    .mobile-only.column, .mobile-layout.column { display: flex !important; }
+    .mobile-only.row, .mobile-layout.row { display: flex !important; }
+    .responsive-row { flex-direction: column !important; }
+    .responsive-grid-2 { display: grid !important; grid-template-columns: repeat(1, minmax(0, 1fr)) !important; }
+}
+
+/* Receipt uploader styles (moved from add_expense.py) */
+.receipt-uploader .q-uploader__header-content { justify-content: center !important; }
+.receipt-uploader .q-uploader__header .q-icon { font-size: 3rem !important; }
+.receipt-uploader .q-uploader__header { padding: 5px !important; }
+.receipt-card .preview-container { display: flex !important; justify-content: center !important; align-items: center !important; text-align: center !important; }
+.receipt-card .preview-image,
+.receipt-card .preview-container img,
+.receipt-card .preview-container .q-img { display: block !important; margin: 0 auto !important; max-width: 100% !important; width: 180px !important; height: 120px !important; object-fit: contain !important; }
+
+@media (min-width: 785px) {
+    .receipt-card .responsive-row { flex-direction: column !important; align-items: center !important; }
+    .receipt-card .preview-container { width: 100% !important; margin-bottom: 0.5rem !important; }
+    .receipt-card .preview-container img,
+    .receipt-card .preview-image,
+    .receipt-card .preview-container .q-img { display: block !important; width: 100% !important; max-width: 500px !important; height: auto !important; max-height: 160px !important; object-fit: contain !important; }
+    .receipt-card .responsive-row > .q-column,
+    .receipt-card .responsive-row > .q-row,
+    .receipt-card .responsive-row > .flex-grow { width: 100% !important; }
+}
+
+/* Banking table action styling */
+.bank-table td[data-col="actions"] { color: #2563eb !important; font-weight: 600 !important; cursor: pointer !important; }

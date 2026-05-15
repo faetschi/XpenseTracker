@@ -11,6 +11,15 @@ engine = create_engine(settings.DATABASE_URL, **engine_kwargs)
 # Optimize SQLite for SD card performance
 if settings.DB_TYPE == "sqlite":
     @event.listens_for(engine, "connect")
+    def check_sqlite_integrity(dbapi_connection, connection_record):
+        cursor = dbapi_connection.cursor()
+        cursor.execute("PRAGMA quick_check")
+        row = cursor.fetchone()
+        if row and row[0] != "ok":
+            raise RuntimeError(f"SQLite integrity check FAILED: {row[0]}")
+        cursor.close()
+
+    @event.listens_for(engine, "connect")
     def set_sqlite_pragma(dbapi_connection, connection_record):
         cursor = dbapi_connection.cursor()
         cursor.execute("PRAGMA journal_mode=WAL")

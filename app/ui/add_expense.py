@@ -8,7 +8,7 @@ from app.services.bank_ai_service import map_bank_categories, apply_recurring_ma
 from app.db.models import Expense
 from app.db.schemas import ExpenseCreate
 from app.core.config import settings, USER_SETTINGS_PATH
-from app.ui.layout import theme, BREAKPOINT
+from app.ui.layout import theme
 from app.utils.logger import get_logger
 from app.utils.bank_csv import parse_easybank_csv
 import io
@@ -25,74 +25,6 @@ def add_expense_page():
 
     bank_import_history_path = os.path.join('app', 'data', 'bank_import_history.json')
     
-    # --- Custom CSS ---
-    
-    ## center and enlarge the upload button
-    ui.add_css('''
-        .receipt-uploader .q-uploader__header-content {
-            justify-content: center !important;
-        }
-        .receipt-uploader .q-uploader__header .q-icon {
-            font-size: 3rem !important;
-        }
-        .receipt-uploader .q-uploader__header {
-            padding: 5px !important;
-        }
-        
-        /* Ensure receipt preview is centered and behaves consistently */
-        .receipt-card .preview-container {
-            display: flex !important;
-            justify-content: center !important;
-            align-items: center !important;
-            text-align: center !important;
-        }
-        .receipt-card .preview-image,
-        .receipt-card .preview-container img,
-        .receipt-card .preview-container .q-img {
-            display: block !important;
-            margin-left: auto !important;
-            margin-right: auto !important;
-            max-width: 100% !important;
-            width: 180px !important;
-            height: 120px !important;
-            object-fit: contain !important;
-        }
-
-        /* On desktop, stack and center the preview above the form fields (page-scoped) */
-        @media (min-width: {BREAKPOINT}px) {
-            .receipt-card .responsive-row {
-                flex-direction: column !important;
-                align-items: center !important;
-            }
-            .receipt-card .preview-container {
-                width: 100% !important;
-                margin-bottom: 0.5rem !important;
-            }
-            .receipt-card .preview-container img,
-            .receipt-card .preview-image,
-            .receipt-card .preview-container .q-img {
-                display: block !important;
-                width: 100% !important;            
-                max-width: 500px !important;
-                height: auto !important;
-                max-height: 160px !important;
-                object-fit: contain !important;
-            }
-            .receipt-card .responsive-row > .q-column,
-            .receipt-card .responsive-row > .q-row,
-            .receipt-card .responsive-row > .flex-grow {
-                width: 100% !important;
-            }
-        }
-
-        /* Banking table action styling */
-        .bank-table td[data-col="actions"] {
-            color: #2563eb !important;
-            font-weight: 600 !important;
-            cursor: pointer !important;
-        }
-
-    ''')
     
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         ui.label('➕ Add New Expense').classes('text-2xl font-bold text-gray-800')
@@ -404,6 +336,12 @@ def add_expense_page():
                                 ui.label('Import Options').classes('text-sm font-semibold text-gray-700')
                                 skip_duplicates_toggle = ui.toggle(['Skip duplicates', 'Import all'], value='Skip duplicates') \
                                     .props('toggle-color=blue').classes('w-full')
+                                ai_auto_switch = ui.switch('Auto AI Category Mapping', value=settings.BANK_AI_AUTO_MAPPING)
+                                ai_auto_switch.on_value_change(lambda _: (
+                                    setattr(settings, 'BANK_AI_AUTO_MAPPING', ai_auto_switch.value),
+                                    persist_ai_auto_mapping(),
+                                    update_mapping_visibility(),
+                                ))
                                 ui.button('Recurring Payments/Gehalt', icon='rule', on_click=lambda: recurring_dialog.open()) \
                                     .props('flat color=blue').classes('justify-start')
                                 ui.button('Uploaded CSVs', icon='manage_history', on_click=lambda: uploaded_csvs_dialog.open()) \
@@ -443,6 +381,20 @@ def add_expense_page():
                         except Exception as exc:
                             logger.error(f"Failed to save recurring mappings: {exc}")
                             ui.notify(f'Failed to save recurring mappings: {exc}', type='negative')
+
+                    def persist_ai_auto_mapping():
+                        try:
+                            os.makedirs(os.path.dirname(USER_SETTINGS_PATH), exist_ok=True)
+                            data = {}
+                            if os.path.exists(USER_SETTINGS_PATH):
+                                with open(USER_SETTINGS_PATH, 'r') as f:
+                                    data = json.load(f)
+                            data['BANK_AI_AUTO_MAPPING'] = settings.BANK_AI_AUTO_MAPPING
+                            with open(USER_SETTINGS_PATH, 'w') as f:
+                                json.dump(data, f, ensure_ascii=False, indent=2)
+                        except Exception as exc:
+                            logger.error(f"Failed to save AI auto mapping setting: {exc}")
+                            ui.notify(f'Failed to save AI auto mapping setting: {exc}', type='negative')
 
                     def remove_recurring_rule(index: int):
                         if 0 <= index < len(bank_state['recurring_mappings']):

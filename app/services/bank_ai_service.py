@@ -1,6 +1,6 @@
 import json
 import re
-from typing import Dict, List
+from typing import Dict, List, Tuple
 
 import google.genai as genai
 from openai import OpenAI
@@ -14,12 +14,16 @@ logger = get_logger(__name__)
 
 
 def _default_category(entry_type: str) -> str:
+    if entry_type == "transfer":
+        return "Transfer"
     if entry_type == "income":
         return settings.INCOME_CATEGORIES[0] if settings.INCOME_CATEGORIES else "Sonstiges"
     return settings.EXPENSE_CATEGORIES[0] if settings.EXPENSE_CATEGORIES else "Sonstiges"
 
 
 def _resolve_category(candidates: List[str], entry_type: str) -> str:
+    if entry_type == "transfer":
+        return "Transfer"
     allowed = settings.INCOME_CATEGORIES if entry_type == "income" else settings.EXPENSE_CATEGORIES
     allowed_lower = {c.lower(): c for c in allowed}
 
@@ -40,6 +44,8 @@ def _resolve_category(candidates: List[str], entry_type: str) -> str:
 def _heuristic_category_for_description(description: str, entry_type: str) -> str:
     text = (description or "").lower()
 
+    if entry_type == "transfer":
+        return "Transfer"
     if entry_type == "income":
         if any(k in text for k in ("gehalt", "salary", "lohn")):
             return _resolve_category(["Gehalt"], entry_type)
@@ -61,7 +67,7 @@ def _heuristic_category_for_description(description: str, entry_type: str) -> st
     return _default_category(entry_type)
 
 
-def _chunk_entries(entries: List[BankCsvEntry], size: int) -> List[List[BankCsvEntry]]:
+def _chunk_entries(entries: List, size: int) -> List[List]:
     return [entries[i:i + size] for i in range(0, len(entries), size)]
 
 
@@ -71,6 +77,8 @@ def _apply_recurring_overrides(entries: List[BankCsvEntry], mapping: Dict[int, s
         return mapping
 
     for idx, entry in enumerate(entries, start=1):
+        if entry.entry_type == "transfer":
+            continue
         description = (entry.description or "").lower()
         for rule in rules:
             contains = str(rule.get("contains", "")).strip().lower()
@@ -164,15 +172,19 @@ def map_bank_categories(entries: List[BankCsvEntry]) -> Dict[int, str]:
         client_gemini = genai.Client(api_key=settings.GOOGLE_API_KEY)
     else:
         raise ValueError("Unsupported AI provider for mapping")
+
     mapping: Dict[int, str] = {}
+
+    for idx, entry in enumerate(entries, start=1):
+        if entry.entry_type == "transfer":
+            mapping[idx] = "Transfer"
+
+    non_transfer = [(idx, e) for idx, e in enumerate(entries, start=1) if e.entry_type != "transfer"]
     offset = 0
-    for chunk in _chunk_entries(entries, 50):
+    for chunk in _chunk_entries(non_transfer, 50):
         payload = [
-            {
-                "id": idx + offset + 1,
-                "description": entry.description,
-            }
-            for idx, entry in enumerate(chunk)
+            {"id": idx + offset + 1, "description": entry.description}
+            for idx, (_, entry) in enumerate(chunk)
         ]
         if provider == "openai":
             parsed = _call_openai(client_openai, payload)
@@ -182,7 +194,7 @@ def map_bank_categories(entries: List[BankCsvEntry]) -> Dict[int, str]:
             try:
                 row_id = int(item.get("id"))
                 category = str(item.get("category", "")).strip()
-                entry = entries[row_id - 1]
+                original_idx, entry = non_transfer[row_id - 1]
             except Exception:
                 continue
 
@@ -190,7 +202,7 @@ def map_bank_categories(entries: List[BankCsvEntry]) -> Dict[int, str]:
             if category not in allowed:
                 category = _default_category(entry.entry_type)
 
-            mapping[row_id] = category
+            mapping[original_idx] = category
 
         offset += len(chunk)
 

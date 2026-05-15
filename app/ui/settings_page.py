@@ -204,13 +204,6 @@ def settings_page():
                 with lightweight_charts:
                     ui.tooltip('Use lightweight charts for better performance.').props('anchor="bottom left" self="top left"')
 
-                auto_ai_mapping = ui.switch(
-                    text='Auto AI Category Mapping for Bank Upload',
-                    value=settings.BANK_AI_AUTO_MAPPING
-                ).classes('w-full')
-                with auto_ai_mapping:
-                    ui.tooltip('When enabled, AI category suggestions run automatically on CSV upload and are applied directly.').props('anchor="bottom left" self="top left"')
-
         def save_settings():
             try:
                 # Update in-memory settings
@@ -231,7 +224,6 @@ def settings_page():
                 settings.UPLOAD_RETENTION_MINUTES = int(retention.value)
                 settings.ENABLE_CHARTS = bool(enable_charts.value)
                 settings.LIGHTWEIGHT_CHARTS = bool(lightweight_charts.value)
-                settings.BANK_AI_AUTO_MAPPING = bool(auto_ai_mapping.value)
                 
                 # Persist to user_settings.json (JSON is better suited for complex data types and user prefs)
                 # NOTE: API keys are excluded here to prevent saving secrets to this file.
@@ -247,8 +239,7 @@ def settings_page():
                     "DASHBOARD_YEARS_LOOKBACK": settings.DASHBOARD_YEARS_LOOKBACK,
                     "UPLOAD_RETENTION_MINUTES": settings.UPLOAD_RETENTION_MINUTES,
                     "ENABLE_CHARTS": settings.ENABLE_CHARTS,
-                    "LIGHTWEIGHT_CHARTS": settings.LIGHTWEIGHT_CHARTS,
-                    "BANK_AI_AUTO_MAPPING": settings.BANK_AI_AUTO_MAPPING
+                    "LIGHTWEIGHT_CHARTS": settings.LIGHTWEIGHT_CHARTS
                 }
                 
                 with open(USER_SETTINGS_PATH, "w") as f:

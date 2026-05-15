@@ -1,10 +1,6 @@
 from nicegui import ui, app
 from app.core.config import settings
 
-# Central breakpoint used across the UI (in pixels)
-BREAKPOINT = 785
-
-
 def nav_link(label: str, link: str, icon: str, active: bool = False, on_click=None, extra_classes: str = ''):
     """Helper to create consistent navigation links in the header (desktop + drawer)."""
     base_classes = 'flex items-center gap-2 px-4 py-2 rounded-lg transition-colors duration-200 no-underline'
@@ -33,47 +29,6 @@ def theme(current_page: str = None):
         dark.auto()
     
     ui.add_head_html('<link rel="stylesheet" href="/ui/static/styles.css">')
-    css = '''
-        <style>
-            /* Default: hide desktop elements */
-            .desktop-only, .desktop-layout {{ display: none !important; }}
-
-            @media (min-width: {bp}px) {{
-                .mobile-only, .mobile-layout {{ display: none !important; }}
-                /* Show desktop elements */
-                .desktop-only, .desktop-layout {{ display: block !important; }}
-                .desktop-only.column, .desktop-layout.column {{ display: flex !important; }}
-                .desktop-only.row, .desktop-layout.row {{ display: flex !important; }}
-
-                /* Responsive row: row on desktop, column on mobile */
-                .responsive-row {{ flex-direction: row !important; }}
-
-                /* Responsive grid: 2 columns on desktop, 1 on mobile */
-                .responsive-grid-2 {{
-                    display: grid !important;
-                    grid-template-columns: repeat(2, minmax(0, 1fr)) !important;
-                }}
-            }}
-
-            @media (max-width: {bp_minus}px) {{
-                .desktop-only, .desktop-layout {{ display: none !important; }}
-                /* Ensure mobile elements are shown */
-                .mobile-only, .mobile-layout {{ display: block !important; }}
-                .mobile-only.column, .mobile-layout.column {{ display: flex !important; }}
-                .mobile-only.row, .mobile-layout.row {{ display: flex !important; }}
-
-                /* Responsive row: row on desktop, column on mobile */
-                .responsive-row {{ flex-direction: column !important; }}
-
-                /* Responsive grid: 2 columns on desktop, 1 on mobile */
-                .responsive-grid-2 {{
-                    display: grid !important;
-                    grid-template-columns: repeat(1, minmax(0, 1fr)) !important;
-                }}
-            }}
-        </style>
-    '''
-    ui.add_head_html(css.format(bp=BREAKPOINT, bp_minus=BREAKPOINT-1))
 
     links = [
         ('Dashboard', '/', 'dashboard', 'dashboard'),
