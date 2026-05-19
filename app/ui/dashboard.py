@@ -12,16 +12,15 @@ from app.ui.layout import theme
 def dashboard_page():
     theme('dashboard')
     
+    # Mobile quick action (sticky bottom footer bar)
+    with ui.element('div').classes('mobile-bottom-bar mobile-only'):
+        ui.button('Add Expense', icon='add_circle', on_click=lambda: ui.navigate.to('/add')) \
+            .props('no-caps unelevated') \
+            .classes('mobile-add-btn')
+    
     with ui.column().classes('w-full p-4 max-w-7xl mx-auto gap-6'):
         # Header
         ui.label('💰 XpenseTracker Dashboard').classes('text-2xl font-bold text-gray-800')
-
-        # Mobile quick action (keep this above filters so it is instantly visible)
-        (
-            ui.button('Add Expense', icon='add_circle', on_click=lambda: ui.navigate.to('/add'))
-            .props('no-caps')
-            .classes('mobile-only w-full mobile-add-expense')
-        )
         
         # Filter Toolbar
         current_year = date.today().year
@@ -131,7 +130,7 @@ def dashboard_page():
             with ui.column().classes('filter-group w-full gap-3 items-center md:items-start lg:w-auto md:-ml-2'):
                 with ui.row().classes('items-center gap-1 w-full md:max-w-md justify-center md:justify-start flex-wrap'):
                     all_year_switch = (
-                        ui.switch('Whole Year', on_change=toggle_month)
+                        ui.switch('All Year', on_change=toggle_month)
                         .classes('filter-switch px-1 w-auto mx-2')
                         .style('margin-left: auto; margin-right: auto; display: flex; justify-content: center;')
                     )
@@ -170,9 +169,15 @@ def dashboard_page():
 
             db = next(get_db())
             try:
-                expenses = ExpenseService.get_expenses(db, limit=5)  # Recent transactions stay global for now
+                expenses = ExpenseService.get_expenses(db, limit=5)
             finally:
                 db.close()
+
+            # Chart containers (initialized before the with block for closure access)
+            chart_container = None
+            bar_chart_container = None
+            daily_bar_container = None
+            show_income_toggle = None
 
             with content:
                 # Metrics Row
@@ -204,54 +209,75 @@ def dashboard_page():
                     elif savings_rate < -1:
                         savings_color = 'red'
                     else:
-                        savings_color = 'blue' # Neutral color for near-zero rates
+                        savings_color = 'blue'
 
                     with ui.card().classes(f'flex-1 w-full p-4 border-l-4 border-{savings_color}-500 shadow-sm'):
                         ui.label('Savings Rate').classes('text-gray-500 text-sm uppercase tracking-wide')
                         ui.label(f'{savings_rate:.1f}%').classes(f'text-3xl font-bold text-{savings_color}-600')
 
-                # --- Pie Chart & Recent Transactions ---
-                with ui.row().classes('w-full gap-4 responsive-row'):
-                    # Pie Chart
+                # Charts Section
+                if all_year_switch.value:
+                    # All Year Mode: Monthly bar chart (full width)
                     with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
-                        ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
-                        chart_container = ui.column().classes('w-full')
-                        with chart_container:
+                        ui.label('Monthly Income vs Expenses').classes('text-lg font-bold mb-4 text-gray-700')
+                        bar_chart_container = ui.column().classes('w-full')
+                        with bar_chart_container:
                             if settings.ENABLE_CHARTS:
                                 ui.label('Loading chart...').classes('text-gray-400 italic')
                             else:
                                 ui.label('Charts disabled for performance.').classes('text-gray-400 italic')
+                else:
+                    # Month Mode: Pie chart + Daily bar chart side by side
+                    with ui.row().classes('w-full gap-4 responsive-row'):
+                        # Pie Chart
+                        with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
+                            ui.label('Expenses by Category').classes('text-lg font-bold mb-4 text-gray-700')
+                            chart_container = ui.column().classes('w-full')
+                            with chart_container:
+                                if settings.ENABLE_CHARTS:
+                                    ui.label('Loading chart...').classes('text-gray-400 italic')
+                                else:
+                                    ui.label('Charts disabled for performance.').classes('text-gray-400 italic')
 
-                    # --- Recent Transactions ---
-                    with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
-                        ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
-                        if expenses:
-                            # Mobile-friendly card layout for recent transactions
-                            with ui.column().classes('w-full gap-3'):
-                                for expense in expenses[:5]:  # Limit to 5 most recent
-                                    with ui.card().classes('w-full p-3 shadow-sm border border-gray-200 hover:shadow-md transition-shadow'):
-                                        with ui.row().classes('w-full items-center justify-between flex-wrap gap-2'):
-                                            # Date and Category
-                                            with ui.column().classes('flex-1 min-w-0'):
-                                                ui.label(expense.date.strftime('%d.%m.%Y')).classes('text-sm text-gray-600 font-medium')
-                                                ui.label(expense.category).classes('text-sm text-gray-800 truncate')
-                                            
-                                            # Amount
-                                            etype = getattr(expense, 'type', 'expense')
-                                            if etype == 'income':
-                                                amount_class = 'text-green-600 font-bold'
-                                                prefix = '+'
-                                            elif etype == 'transfer':
-                                                amount_class = 'text-blue-600 font-bold'
-                                                prefix = '↔'
-                                            else:
-                                                amount_class = 'text-red-600'
-                                                prefix = '-'
-                                            ui.label(
-                                                f"{prefix}{format_currency(expense.amount_eur)}"
-                                            ).classes(f'text-lg font-semibold {amount_class} whitespace-nowrap')
-                        else:
-                            ui.label('No transactions yet.').classes('text-gray-400 italic')
+                        # Daily Bar Chart
+                        with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
+                            with ui.row().classes('w-full items-center justify-between mb-4'):
+                                ui.label('Daily Expenses').classes('text-lg font-bold text-gray-700')
+                                show_income_toggle = ui.switch('Income', value=False).props('color=green size=sm')
+                            daily_bar_container = ui.column().classes('w-full')
+                            with daily_bar_container:
+                                if settings.ENABLE_CHARTS:
+                                    ui.label('Loading chart...').classes('text-gray-400 italic')
+                                else:
+                                    ui.label('Charts disabled for performance.').classes('text-gray-400 italic')
+
+                # --- Recent Transactions ---
+                with ui.card().classes('flex-1 w-full p-6 shadow-sm min-w-[280px]'):
+                    ui.label('Recent Transactions').classes('text-lg font-bold mb-4 text-gray-700')
+                    if expenses:
+                        with ui.column().classes('w-full gap-3'):
+                            for expense in expenses[:5]:
+                                with ui.card().classes('w-full p-3 shadow-sm border border-gray-200 hover:shadow-md transition-shadow'):
+                                    with ui.row().classes('w-full items-center justify-between flex-wrap gap-2'):
+                                        with ui.column().classes('flex-1 min-w-0'):
+                                            ui.label(expense.date.strftime('%d.%m.%Y')).classes('text-sm text-gray-600 font-medium')
+                                            ui.label(expense.category).classes('text-sm text-gray-800 truncate')
+                                        
+                                        etype = getattr(expense, 'type', 'expense')
+                                        if etype == 'income':
+                                            amount_class = 'text-green-600 font-bold'
+                                            prefix = '+'
+                                        elif etype == 'transfer':
+                                            amount_class = 'text-blue-600 font-bold'
+                                            prefix = '↔'
+                                        else:
+                                            amount_class = 'text-red-600'
+                                            prefix = '-'
+                                        ui.label(
+                                            f"{prefix}{format_currency(expense.amount_eur)}"
+                                        ).classes(f'text-lg font-semibold {amount_class} whitespace-nowrap')
+                    else:
+                        ui.label('No transactions yet.').classes('text-gray-400 italic')
 
             async def load_chart():
                 if not settings.ENABLE_CHARTS:
@@ -260,47 +286,128 @@ def dashboard_page():
                 from app.ui.charts import (
                     render_expenses_by_category_lightweight,
                     render_expenses_by_category_pie,
+                    render_monthly_bar_chart,
+                    render_monthly_bar_chart_lightweight,
+                    render_daily_bar_chart,
+                    render_daily_bar_chart_lightweight,
                 )
 
-                cache_key = (selected_year, selected_month)
-                now = time.time()
-                cached = stats_cache.get(cache_key)
+                if all_year_switch.value:
+                    # All Year Mode: Monthly bar chart
+                    monthly_cache_key = (selected_year, 'monthly')
+                    cached_monthly = stats_cache.get(monthly_cache_key)
+                    monthly_data = None
+                    if cached_monthly and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
+                        cached_at, data = cached_monthly
+                        if now - cached_at <= settings.DASHBOARD_CACHE_TTL_SECONDS:
+                            monthly_data = data
 
-                if cached and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
-                    cached_at, cached_summary = cached
-                    if now - cached_at <= settings.DASHBOARD_CACHE_TTL_SECONDS:
-                        by_category = cached_summary.get('by_category')
-                    else:
-                        by_category = None
+                    if monthly_data is None:
+                        db = next(get_db())
+                        try:
+                            monthly_data = ExpenseService.get_monthly_breakdown(db, year=selected_year)
+                        finally:
+                            db.close()
+                        stats_cache[monthly_cache_key] = (now, monthly_data)
+
+                    if bar_chart_container:
+                        bar_chart_container.clear()
+                        with bar_chart_container:
+                            if monthly_data and any(m['spent'] > 0 or m['income'] > 0 for m in monthly_data):
+                                if settings.LIGHTWEIGHT_CHARTS:
+                                    render_monthly_bar_chart_lightweight(
+                                        monthly_data=monthly_data,
+                                        format_currency=format_currency,
+                                    )
+                                else:
+                                    render_monthly_bar_chart(
+                                        monthly_data=monthly_data,
+                                        format_currency=format_currency,
+                                    )
+                            else:
+                                ui.label('No data available for this year.').classes('text-gray-400 italic')
                 else:
+                    # Month Mode: Pie chart + Daily bar chart
+                    
+                    # Pie chart (category breakdown)
+                    category_cache_key = (selected_year, selected_month)
+                    cached_cat = stats_cache.get(category_cache_key)
                     by_category = None
+                    if cached_cat and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
+                        cached_at, cached_summary = cached_cat
+                        if now - cached_at <= settings.DASHBOARD_CACHE_TTL_SECONDS:
+                            by_category = cached_summary.get('by_category')
 
-                if by_category is None:
-                    db = next(get_db())
-                    try:
-                        by_category = ExpenseService.get_category_breakdown(db, year=selected_year, month=selected_month)
-                    finally:
-                        db.close()
-                    if cached and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
-                        stats_cache[cache_key] = (now, {**cached_summary, 'by_category': by_category})
+                    if by_category is None:
+                        db = next(get_db())
+                        try:
+                            by_category = ExpenseService.get_category_breakdown(db, year=selected_year, month=selected_month)
+                        finally:
+                            db.close()
+                        if cached_cat and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
+                            stats_cache[category_cache_key] = (now, {**cached_summary, 'by_category': by_category})
 
-                chart_container.clear()
-                with chart_container:
-                    if by_category:
-                        if settings.LIGHTWEIGHT_CHARTS:
-                            render_expenses_by_category_lightweight(
-                                by_category=by_category,
-                                expenses_label=expenses_label,
-                                format_currency=format_currency,
-                            )
-                        else:
-                            render_expenses_by_category_pie(
-                                by_category=by_category,
-                                expenses_label=expenses_label,
-                                format_currency=format_currency,
-                            )
-                    else:
-                        ui.label('No expense data yet.').classes('text-gray-400 italic')
+                    if chart_container:
+                        chart_container.clear()
+                        with chart_container:
+                            if by_category:
+                                if settings.LIGHTWEIGHT_CHARTS:
+                                    render_expenses_by_category_lightweight(
+                                        by_category=by_category,
+                                        expenses_label=expenses_label,
+                                        format_currency=format_currency,
+                                    )
+                                else:
+                                    render_expenses_by_category_pie(
+                                        by_category=by_category,
+                                        expenses_label=expenses_label,
+                                        format_currency=format_currency,
+                                    )
+                            else:
+                                ui.label('No expense data yet.').classes('text-gray-400 italic')
+
+                    # Daily bar chart
+                    daily_cache_key = (selected_year, selected_month, 'daily')
+                    cached_daily = stats_cache.get(daily_cache_key)
+                    daily_data = None
+                    if cached_daily and settings.DASHBOARD_CACHE_TTL_SECONDS > 0:
+                        cached_at, data = cached_daily
+                        if now - cached_at <= settings.DASHBOARD_CACHE_TTL_SECONDS:
+                            daily_data = data
+
+                    if daily_data is None:
+                        db = next(get_db())
+                        try:
+                            daily_data = ExpenseService.get_daily_breakdown(db, year=selected_year, month=selected_month)
+                        finally:
+                            db.close()
+                        stats_cache[daily_cache_key] = (now, daily_data)
+
+                    if daily_bar_container:
+                        daily_bar_container.clear()
+                        with daily_bar_container:
+                            show_income = show_income_toggle.value if show_income_toggle else False
+                            if daily_data and any(d['spent'] > 0 for d in daily_data):
+                                if settings.LIGHTWEIGHT_CHARTS:
+                                    render_daily_bar_chart_lightweight(
+                                        daily_data=daily_data,
+                                        format_currency=format_currency,
+                                        show_income=show_income,
+                                    )
+                                else:
+                                    render_daily_bar_chart(
+                                        daily_data=daily_data,
+                                        format_currency=format_currency,
+                                        show_income=show_income,
+                                    )
+                            else:
+                                ui.label('No expense data for this month.').classes('text-gray-400 italic')
+
+            def on_income_toggle_change(_):
+                asyncio.create_task(load_chart())
+
+            if show_income_toggle is not None:
+                show_income_toggle.on_value_change(on_income_toggle_change)
 
             ui.timer(0.05, lambda: asyncio.create_task(load_chart()), once=True)
 

@@ -161,6 +161,74 @@ class ExpenseService:
         return {cat: float(amt) for cat, amt in category_stats}
 
     @staticmethod
+    def get_monthly_breakdown(db: Session, year: int) -> list[dict]:
+        """Returns income, spent, balance for each month of the given year (1-12)."""
+        query = db.query(Expense).filter(func.extract('year', Expense.date) == year)
+
+        monthly = query.with_entities(
+            func.extract('month', Expense.date).label('month'),
+            Expense.type,
+            func.sum(Expense.amount_eur).label('total'),
+        ).group_by(
+            func.extract('month', Expense.date),
+            Expense.type,
+        ).all()
+
+        result = []
+        for m in range(1, 13):
+            result.append({"month": m, "income": 0.0, "spent": 0.0, "balance": 0.0})
+
+        for month_num, etype, total in monthly:
+            idx = int(month_num) - 1
+            if 0 <= idx < 12:
+                if etype == 'income':
+                    result[idx]["income"] = float(total)
+                elif etype == 'expense':
+                    result[idx]["spent"] = float(total)
+
+        for entry in result:
+            entry["balance"] = entry["income"] - entry["spent"]
+
+        return result
+
+    @staticmethod
+    def get_daily_breakdown(db: Session, year: int, month: int) -> list[dict]:
+        """Returns income, spent, balance for each day of the given month."""
+        import calendar
+        days_in_month = calendar.monthrange(year, month)[1]
+
+        query = db.query(Expense).filter(
+            func.extract('year', Expense.date) == year,
+            func.extract('month', Expense.date) == month,
+        )
+
+        daily = query.with_entities(
+            func.extract('day', Expense.date).label('day'),
+            Expense.type,
+            func.sum(Expense.amount_eur).label('total'),
+        ).group_by(
+            func.extract('day', Expense.date),
+            Expense.type,
+        ).all()
+
+        result = []
+        for d in range(1, days_in_month + 1):
+            result.append({"day": d, "income": 0.0, "spent": 0.0, "balance": 0.0})
+
+        for day_num, etype, total in daily:
+            idx = int(day_num) - 1
+            if 0 <= idx < days_in_month:
+                if etype == 'income':
+                    result[idx]["income"] = float(total)
+                elif etype == 'expense':
+                    result[idx]["spent"] = float(total)
+
+        for entry in result:
+            entry["balance"] = entry["income"] - entry["spent"]
+
+        return result
+
+    @staticmethod
     def get_stats(db: Session, year: int = None, month: int = None) -> Dict[str, Any]:
         query = db.query(Expense)
         
