@@ -289,7 +289,6 @@ def dashboard_page():
                     render_monthly_bar_chart,
                     render_monthly_bar_chart_lightweight,
                     render_daily_bar_chart,
-                    render_daily_bar_chart_lightweight,
                 )
 
                 if all_year_switch.value:
@@ -388,18 +387,11 @@ def dashboard_page():
                         with daily_bar_container:
                             show_income = show_income_toggle.value if show_income_toggle else False
                             if daily_data and any(d['spent'] > 0 for d in daily_data):
-                                if settings.LIGHTWEIGHT_CHARTS:
-                                    render_daily_bar_chart_lightweight(
-                                        daily_data=daily_data,
-                                        format_currency=format_currency,
-                                        show_income=show_income,
-                                    )
-                                else:
-                                    render_daily_bar_chart(
-                                        daily_data=daily_data,
-                                        format_currency=format_currency,
-                                        show_income=show_income,
-                                    )
+                                render_daily_bar_chart(
+                                    daily_data=daily_data,
+                                    format_currency=format_currency,
+                                    show_income=show_income,
+                                )
                             else:
                                 ui.label('No expense data for this month.').classes('text-gray-400 italic')
 
