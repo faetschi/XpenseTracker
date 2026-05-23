@@ -13,6 +13,8 @@ Whenever you update your code, simply `build and push` from PC with Docker via [
 .\deployment\deploy.bat
 ```
 
+# All Steps for Raspberry Pi Deployment
+
 ## Step 1: First Setup on your PC (Do this once)
 
 Your PC is likely Intel/AMD (x86 architecture), while the Pi Zero 2 W is ARM64. If you just run `docker build` on your PC, the image will not run on the Pi. You must use **Docker Buildx** to cross-compile.

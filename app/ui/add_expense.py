@@ -620,6 +620,15 @@ def add_expense_page():
                     with ui.element('div').classes('w-full overflow-x-auto mt-4'):
                         bank_table = ui.aggrid({
                             'columnDefs': [
+                                {
+                                    'headerName': '',
+                                    'field': 'select',
+                                    'checkboxSelection': True,
+                                    'headerCheckboxSelection': True,
+                                    'width': 50,
+                                    'editable': False,
+                                    'sortable': False,
+                                },
                                 {'headerName': 'Date', 'field': 'date', 'editable': True, 'width': 120},
                                 {'headerName': 'Description', 'field': 'description', 'editable': True, 'width': 260},
                                 {
@@ -686,6 +695,7 @@ def add_expense_page():
                             ],
                             'rowData': [],
                             'pagination': False,
+                            'rowSelection': 'multiple',
                             'domLayout': 'normal',
                             'defaultColDef': {
                                 'resizable': True,
@@ -926,12 +936,35 @@ def add_expense_page():
                         bank_state['allow_reimport'] = False
                         update_bank_table()
 
+                    async def remove_selected_preview_rows():
+                        selected_rows = await bank_table.get_selected_rows()
+                        if not selected_rows:
+                            ui.notify('No rows selected.', type='warning')
+                            return
+
+                        selected_ids = {int(row.get('id')) for row in selected_rows if row.get('id') is not None}
+                        if not selected_ids:
+                            ui.notify('No rows selected.', type='warning')
+                            return
+
+                        bank_state['entries'] = [
+                            entry for idx, entry in enumerate(bank_state['entries'], start=1)
+                            if idx not in selected_ids
+                        ]
+                        # Reset AI proposals because row indexing changes after deletion.
+                        ai_state['proposed'] = {}
+                        apply_ai_btn.disable()
+                        update_bank_table()
+                        ui.notify(f'Removed {len(selected_ids)} rows from preview.', type='positive')
+
                     with ui.row().classes('w-full gap-3 mt-4 items-center flex-wrap relative z-10'):
                         ai_preview_btn = ui.button('Generate AI Preview', on_click=generate_ai_preview, icon='auto_fix_high') \
                             .classes('bg-blue-600 text-white')
                         apply_ai_btn = ui.button('Apply AI Changes', on_click=apply_ai_mapping) \
                             .classes('bg-green-600 text-white')
                         apply_ai_btn.disable()
+                        ui.button('Delete Selected from Preview', on_click=remove_selected_preview_rows, icon='delete') \
+                            .props('outline color=red').classes('text-red-600')
                         import_btn = ui.button('Import All', on_click=import_bank_entries, icon='upload') \
                             .classes('bg-green-600 text-white')
                         ui.button(
