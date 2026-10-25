@@ -8,7 +8,7 @@ from app.core.config import settings
 
 TRANSFER_KEYWORDS = {
     "umbuchung", "übertrag", "eigene überweisung", "interne umbuchung",
-    "kontoübertrag", "transfer zwischen eigenen konten",
+    "kontoübertrag", "kontotransfer", "transfer zwischen eigenen konten",
     "fabian jelinek", "easybank", "dkb", "flatex",
 }
 

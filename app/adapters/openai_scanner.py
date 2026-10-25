@@ -41,7 +41,7 @@ class OpenAIScanner(ReceiptScanner):
                     ],
                 }
             ],
-            max_tokens=500,
+            max_completion_tokens=500,
         )
 
         content = response.choices[0].message.content

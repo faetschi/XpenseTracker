@@ -134,7 +134,7 @@ def _call_openai(client: OpenAI, payload: List[dict]) -> List[dict]:
             {"role": "system", "content": BANK_CATEGORY_MAPPING_PROMPT},
             {"role": "user", "content": json.dumps(payload)},
         ],
-        max_tokens=600,
+        max_completion_tokens=600,
     )
 
     content = response.choices[0].message.content or "[]"

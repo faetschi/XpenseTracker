@@ -30,6 +30,19 @@ chmod +x deployment/backup.sh
 ```
 Backups are saved in the `backups/DD-MM-YYYY_HH-MM` folder.
 
+## Production Image Deployment
+
+Build and publish the production image for the Raspberry Pi Zero 2 W from the
+repository root:
+
+```cmd
+.\deployment\deploy.bat
+```
+
+This uses Docker Buildx to build the `linux/arm64` image and pushes
+`ghcr.io/faetschi/xpensetracker:latest`. The Pi's Watchtower installation then
+pulls the image during its scheduled update check.
+
 ## ♻️ Restore
 To restore data from a backup:
 
